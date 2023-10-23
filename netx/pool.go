@@ -1,6 +1,7 @@
 package netx
 
 import (
+	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
 
@@ -39,6 +40,7 @@ func (c *Pool) Add(conn *websocket.Conn) {
 		c.Lock()
 		defer c.Unlock()
 		c.size--
+		log.Tracef("conn close addr: %v last: %v", conn.RemoteAddr(), c.size)
 	})
 }
 
@@ -48,7 +50,7 @@ func (c *Pool) Put(conn *Conn) {
 }
 
 func (c *Pool) Get() (val *Conn) {
-	tm, cancel := context.WithTimeout(context.Background(), time.Minute)
+	tm, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	cx, err := c.q.DequeueOrWaitForNextElementContext(tm)
 	if err != nil {
@@ -103,4 +105,3 @@ func (g *GroupPool) Add(group string, pool *Pool) {
 	defer g.Unlock()
 	g.pool[group] = pool
 }
-

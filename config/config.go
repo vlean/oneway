@@ -2,6 +2,7 @@ package config
 
 import (
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/samber/lo"
@@ -49,6 +50,7 @@ type System struct {
 
 type Client struct {
 	Remote string `toml:"remote"`
+	Name   string `toml:"name"`
 }
 
 type Server struct {
@@ -74,6 +76,8 @@ var (
 )
 
 func init() {
+	// 获取
+	name, _ := os.Hostname()
 	_global = &App{
 		System: System{
 			Host: "0.0.0.0",
@@ -83,11 +87,15 @@ func init() {
 		Auth: Auth{
 			Mode: "github",
 		},
-		Server: Server{ForceHttps: true},
+		Server: Server{
+			ForceHttps: true,
+		},
+		Client: Client{
+			Name: name,
+		},
 	}
 }
 
 func Global() *App {
 	return _global
 }
-

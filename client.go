@@ -45,8 +45,10 @@ func (c *client) Run() {
 }
 
 func (c *client) buildConn() (conn *netx.Conn, err error) {
-	ws, _, err := websocket.DefaultDialer.Dial(lo.If(c.StrictMode(), "wss://").Else("ws://")+
-		c.Client.Remote+"/connect", nil)
+	ws, _, err := websocket.DefaultDialer.Dial(
+		lo.If(c.StrictMode(), "wss://").Else("ws://")+
+			c.Client.Remote+"/connect?name="+c.Client.Name,
+		nil)
 	if err != nil {
 		return
 	}
@@ -109,4 +111,3 @@ func (c *client) transport(cont []byte, conn *netx.Conn) (err error) {
 	})
 	return
 }
-

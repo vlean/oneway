@@ -145,7 +145,7 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		key := r.Header.Get("group")
+		key := r.Header.Get("name")
 		if key == "" {
 			key = "default"
 		}
@@ -304,4 +304,3 @@ func (s *server) rewrite(r *http.Request) (group string, nr *http.Request, ok bo
 
 	return
 }
-
