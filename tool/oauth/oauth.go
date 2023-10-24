@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"net/http"
 	"net/url"
 
 	"gihub.com/vlean/oneway/config"
@@ -10,7 +11,7 @@ import (
 
 type OAuth interface {
 	AuthURL(to *url.URL) string
-	User(code string) (User, error)
+	User(code string, r *http.Request) (User, error)
 }
 
 type User struct {
@@ -29,6 +30,9 @@ type base struct {
 func (b *base) AuthURL(to *url.URL) string {
 	redirect := lo.If(b.cfg.StrictMode(), "https://").Else("http://") + b.cfg.System.Domain + "/auth/callback"
 	ru, _ := url.Parse(redirect)
+	if to.Scheme == "" {
+		to.Scheme = "https"
+	}
 	q2 := ru.Query()
 	q2.Add("redirect_uri", to.String())
 	ru.RawQuery = q2.Encode()

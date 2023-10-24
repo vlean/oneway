@@ -1,6 +1,9 @@
 package oauth
 
-import "github.com/samber/lo"
+import (
+	"net/http"
+	"net/url"
+)
 
 type gitee struct {
 	*base
@@ -11,7 +14,12 @@ type giteeAuthRep struct {
 	TokenType   string `json:"token_type"`
 }
 
-func (g *gitee) User(code string) (user User, err error) {
+func (g *gitee) User(code string, r *http.Request) (user User, err error) {
+	ru, _ := url.Parse(r.URL.String())
+	if ru.Scheme == "" {
+		ru.Scheme = "https"
+	}
+
 	authRep := giteeAuthRep{}
 	_, err = g.cli.SetDebug(true).R().
 		SetResult(&authRep).
@@ -20,7 +28,7 @@ func (g *gitee) User(code string) (user User, err error) {
 			"client_id":     g.cfg.Auth.ClientId,
 			"client_secret": g.cfg.Auth.Token,
 			"code":          code,
-			"redirect_uri":  lo.If(g.cfg.StrictMode(), "https://").Else("http://") + g.cfg.System.Domain + "/auth/callback",
+			"redirect_uri":  ru.String(),
 		}).Post("https://gitee.com/oauth/token")
 	if err != nil || authRep.AccessToken == "" {
 		return

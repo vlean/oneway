@@ -1,6 +1,8 @@
 package oauth
 
 import (
+	"net/http"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -20,7 +22,7 @@ type AccessTokenRep struct {
 	TokenType   string `json:"token_type"`
 }
 
-func (g *github) User(code string) (user User, err error) {
+func (g *github) User(code string, r *http.Request) (user User, err error) {
 	req := AccessTokenReq{
 		ClientId:     g.cfg.Auth.ClientId,
 		ClientSecret: g.cfg.Auth.Token,

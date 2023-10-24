@@ -117,7 +117,7 @@ func (s *server) router() *http.ServeMux {
 func (s *server) callback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	code := q.Get("code")
-	res, err := s.oauth.User(code)
+	res, err := s.oauth.User(code, r)
 	if err != nil {
 		log.Errorf("oauth fail err: %v", err)
 		return
