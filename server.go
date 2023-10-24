@@ -115,6 +115,11 @@ func (s *server) router() *http.ServeMux {
 }
 
 func (s *server) callback(w http.ResponseWriter, r *http.Request) {
+	r.URL.Host = r.Host
+	if r.TLS != nil && r.URL.Scheme == "" {
+		r.URL.Scheme = "https"
+	}
+	
 	q := r.URL.Query()
 	code := q.Get("code")
 	res, err := s.oauth.User(code, r)
@@ -166,6 +171,11 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handle(w http.ResponseWriter, r *http.Request) {
+	r.URL.Host = r.Host
+	if r.TLS != nil && r.URL.Scheme == "" {
+		r.URL.Scheme = "https"
+	}
+
 	if s.auth(w, r) != nil {
 		r.URL.Host = r.Host
 		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
