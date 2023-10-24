@@ -39,7 +39,7 @@ func (g *gitee) User(code string, r *http.Request) (user User, err error) {
 	users := make([]User, 0)
 	_, err = g.cli.SetDebug(true).R().
 		SetResult(&users).
-		SetQueryParam("", authRep.AccessToken).
+		SetQueryParam("access_token", authRep.AccessToken).
 		Get("https://gitee.com/api/v5/emails")
 	if err != nil || len(users) == 0 {
 		return
