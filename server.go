@@ -12,7 +12,7 @@ import (
 	"gihub.com/vlean/oneway/gox"
 	"gihub.com/vlean/oneway/model"
 	"gihub.com/vlean/oneway/netx"
-	"gihub.com/vlean/oneway/tool/github"
+	"gihub.com/vlean/oneway/tool/oauth"
 	"github.com/foomo/simplecert"
 	"github.com/foomo/tlsconfig"
 	"github.com/go-session/session/v3"
@@ -31,6 +31,7 @@ func init() {
 			s := &server{
 				App: config.Global(),
 				pg:  netx.NewGroupPool(),
+				oauth: oauth.NewClient(config.Global()),
 			}
 			return s.Run()
 		},
@@ -41,6 +42,7 @@ type server struct {
 	*config.App
 	server *http.Server
 	pg     *netx.GroupPool
+	oauth   oauth.OAuth
 }
 
 func (s *server) Run() (err error) {
@@ -113,11 +115,7 @@ func (s *server) router() *http.ServeMux {
 func (s *server) callback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	code := q.Get("code")
-	res, err := github.Email(github.AccessTokenReq{
-		ClientId:     s.Auth.ClientId,
-		ClientSecret: s.Auth.Token,
-		Code:         code,
-	})
+	res, err := s.oauth.User(code)
 	if err != nil {
 		return
 	}
@@ -158,7 +156,8 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 	if s.auth(w, r) != nil {
-		http.Redirect(w, r, s.App.AuthUrl(r.URL), http.StatusTemporaryRedirect)
+		r.URL.Host = r.Host
+		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
 		return
 	}
 
