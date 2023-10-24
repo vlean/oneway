@@ -295,7 +295,9 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		log.Errorf("parser response err: %v", err)
 		return
 	}
-	s.copyHeader(w.Header(), response.Header)
+	w.WriteHeader(response.StatusCode)
+	h := w.Header()
+	s.copyHeader(h, response.Header)
 	response.Write(w)
 	return
 }
