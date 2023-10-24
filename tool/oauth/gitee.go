@@ -23,7 +23,7 @@ func (g *gitee) User(code string, r *http.Request) (user User, err error) {
 	authRep := giteeAuthRep{}
 	_, err = g.cli.SetDebug(true).R().
 		SetResult(&authRep).
-		SetQueryParams(map[string]string{
+		SetFormData(map[string]string{
 			"grant_type":    "authorization_code",
 			"client_id":     g.cfg.Auth.ClientId,
 			"client_secret": g.cfg.Auth.Token,
