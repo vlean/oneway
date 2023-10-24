@@ -61,7 +61,6 @@ func (s *server) Run() (err error) {
 		Handler: s.router(),
 	}
 	// tls config
-	log.Infof("http server listen %v", s.server.Addr)
 	if s.StrictMode() {
 		dns := s.App.Cloudflare
 		_ = os.Setenv("CLOUDFLARE_EMAIL", dns.Email)
@@ -82,8 +81,10 @@ func (s *server) Run() (err error) {
 		gox.Run(func() {
 			s.redirectHttps()
 		})
+		log.Infof("http server listen %v", s.server.Addr)
 		return s.server.ListenAndServeTLS("", "")
 	}
+	log.Infof("http server listen %v", s.server.Addr)
 	return s.server.ListenAndServe()
 }
 
@@ -97,6 +98,7 @@ func (s *server) redirectHttps() {
 		}
 		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 	})
+	log.Info("http force http server listen :80")
 	_ = http.ListenAndServe(":80", mx)
 }
 
@@ -125,7 +127,10 @@ func (s *server) callback(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("session start err: %v", err)
 		return
 	}
-	log.Tracef("proxy user email: %v", res.Email)
+	if res.Email == "" {
+		log.Tracef("proxy user email empty")
+		return
+	}
 	stroe.Set("email", res.Email)
 	err = stroe.Save()
 	if err != nil {
@@ -135,7 +140,9 @@ func (s *server) callback(w http.ResponseWriter, r *http.Request) {
 	if lo.Contains(s.App.Auth.Email, res.Email) {
 		redirect := q.Get("redirect_uri")
 		http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
+		return
 	}
+	w.WriteHeader(http.StatusForbidden)
 }
 
 func (s *server) connect(w http.ResponseWriter, r *http.Request) {

@@ -18,7 +18,7 @@ func (g *gitee) User(code string) (user User, err error) {
 			"client_id":     g.cfg.Auth.ClientId,
 			"client_secret": g.cfg.Auth.Token,
 			"code":          code,
-		}).Get("https://gitee.com/oauth/token")
+		}).Post("https://gitee.com/oauth/token")
 	if err != nil || authRep.AccessToken == "" {
 		return
 	}
