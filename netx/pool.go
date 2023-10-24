@@ -59,6 +59,7 @@ func (c *Pool) Get() (val *Conn) {
 	tm, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	cx, err := c.q.DequeueOrWaitForNextElementContext(tm)
+	log.Tracef("fetch conn from pool conn: %v err: %v last: %v", cx, err, c.q.GetLen())
 	if err != nil {
 		return nil
 	}
@@ -67,6 +68,7 @@ func (c *Pool) Get() (val *Conn) {
 
 	// 判断是否需要扩容
 	if c.q.GetLen() < 5 && c.size < 1e3 && !c.extent.Load() {
+		log.Tracef("pool need extend size: %d", c.size)
 		c.extent.Store(true)
 		gox.Run(func() {
 			defer func() {
