@@ -127,8 +127,8 @@ func (m *Msg) System() *PoolCtl {
 }
 
 func (m *Msg) TracerWrite() {
-	log.Tracef("tracer msg write type:%d cont: %v", m.Type, string(m.Cont))
+	log.Tracef("tracer msg write type:%d cont: %v", m.Type, len(m.Cont))
 }
 func (m *Msg) TracerRead() {
-	log.Tracef("tracer msg read type:%d cont: %v", m.Type, string(m.Cont))
+	log.Tracef("tracer msg read type:%d cont: %v", m.Type, len(m.Cont))
 }
