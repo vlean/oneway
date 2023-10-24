@@ -19,6 +19,9 @@ func (g *gitee) User(code string, r *http.Request) (user User, err error) {
 	if ru.Scheme == "" {
 		ru.Scheme = "https"
 	}
+	q := ru.Query()
+	q.Del("code")
+	ru.RawQuery = q.Encode()
 
 	authRep := giteeAuthRep{}
 	_, err = g.cli.SetDebug(true).R().
