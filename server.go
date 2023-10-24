@@ -29,8 +29,8 @@ func init() {
 		Aliases: []string{"server"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := &server{
-				App: config.Global(),
-				pg:  netx.NewGroupPool(),
+				App:   config.Global(),
+				pg:    netx.NewGroupPool(),
 				oauth: oauth.NewClient(config.Global()),
 			}
 			return s.Run()
@@ -42,7 +42,7 @@ type server struct {
 	*config.App
 	server *http.Server
 	pg     *netx.GroupPool
-	oauth   oauth.OAuth
+	oauth  oauth.OAuth
 }
 
 func (s *server) Run() (err error) {
@@ -52,7 +52,7 @@ func (s *server) Run() (err error) {
 		session.SetEnableSetCookie(true),
 		session.SetExpired(3600*24),
 		session.SetSecure(s.App.StrictMode()),
-		session.SetStore(session.NewMemoryStore()),
+		session.SetStore(model.NewSessionManager()),
 	)
 
 	// server

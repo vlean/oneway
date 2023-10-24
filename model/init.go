@@ -15,7 +15,7 @@ func init() {
 	}
 
 	// 迁移 schema
-	if err = d.AutoMigrate(&Forward{}); err != nil {
+	if err = d.AutoMigrate(&Forward{}, &Session{}); err != nil {
 		panic(err)
 	}
 	db = d
@@ -28,5 +28,3 @@ func Q(ctx context.Context) *gorm.DB {
 func DB() *gorm.DB {
 	return db
 }
-
-
