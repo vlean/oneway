@@ -119,7 +119,7 @@ func (s *server) callback(w http.ResponseWriter, r *http.Request) {
 	if r.TLS != nil && r.URL.Scheme == "" {
 		r.URL.Scheme = "https"
 	}
-	
+
 	q := r.URL.Query()
 	code := q.Get("code")
 	res, err := s.oauth.User(code, r)
@@ -163,9 +163,9 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 		if key == "" {
 			key = "default"
 		}
-		log.Tracef("connect success group:%s addr:%s", key, conn.RemoteAddr())
 		pool := s.pg.Get(key)
 		pool.Add(conn)
+		log.Tracef("connect success group:%s addr:%s size:%v", key, conn.RemoteAddr(), pool.Len())
 		return
 	}
 }

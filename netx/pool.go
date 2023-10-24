@@ -1,9 +1,10 @@
 package netx
 
 import (
-	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"gihub.com/vlean/oneway/gox"
 	queue "github.com/enriquebris/goconcurrentqueue"
@@ -42,6 +43,11 @@ func (c *Pool) Add(conn *websocket.Conn) {
 		c.size--
 		log.Tracef("conn close addr: %v last: %v", conn.RemoteAddr(), c.size)
 	})
+}
+func (c *Pool) Len() int {
+	c.Lock()
+	defer c.Unlock()
+	return c.size
 }
 
 // Put 将conn放回连接池
