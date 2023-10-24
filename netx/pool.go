@@ -7,7 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"gihub.com/vlean/oneway/gox"
-	queue "github.com/enriquebris/goconcurrentqueue"
 	"github.com/gorilla/websocket"
 	"go.uber.org/atomic"
 	"golang.org/x/net/context"
@@ -15,7 +14,7 @@ import (
 
 type Pool struct {
 	*sync.RWMutex
-	q      *queue.FIFO
+	q      *Queue[*Conn]
 	size   int
 	extent atomic.Bool
 }
@@ -23,7 +22,7 @@ type Pool struct {
 func NewPool() *Pool {
 	pool := &Pool{
 		RWMutex: &sync.RWMutex{},
-		q:       queue.NewFIFO(),
+		q:       NewQueue[*Conn](1e3),
 	}
 	return pool
 }
@@ -58,13 +57,11 @@ func (c *Pool) Put(conn *Conn) {
 func (c *Pool) Get() (val *Conn) {
 	tm, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	cx, err := c.q.DequeueOrWaitForNextElementContext(tm)
-	log.Tracef("fetch conn from pool conn: %v err: %v last: %v", cx, err, c.q.GetLen())
+	conn, err := c.q.DequeueOrWaitForNextElementContext(tm)
+	log.Tracef("fetch conn from pool conn: %v err: %v last: %v", conn, err, c.q.GetLen())
 	if err != nil {
 		return nil
 	}
-
-	conn := cx.(*Conn)
 
 	// 判断是否需要扩容
 	if c.q.GetLen() < 5 && c.size < 1e3 && !c.extent.Load() {
@@ -83,6 +80,7 @@ func (c *Pool) Get() (val *Conn) {
 		})
 		return c.Get()
 	}
+
 	return conn
 }
 

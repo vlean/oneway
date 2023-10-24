@@ -18,6 +18,7 @@ type Conn struct {
 	write chan *Msg
 	once  sync.Once
 	// 消息计数
+	closed bool
 }
 
 func NewConn(conn *websocket.Conn) *Conn {
@@ -31,6 +32,7 @@ func NewConn(conn *websocket.Conn) *Conn {
 	}
 	c.Close = func() {
 		c.once.Do(func() {
+			c.closed = true
 			cancel()
 			c.ws.Close()
 		})
@@ -38,6 +40,10 @@ func NewConn(conn *websocket.Conn) *Conn {
 	go c.readMsg()
 	go c.writeMsg()
 	return c
+}
+
+func (c *Conn) Closed() bool {
+	return c.closed
 }
 
 func (c *Conn) String() string {
@@ -126,4 +132,3 @@ func (m *Msg) TracerWrite() {
 func (m *Msg) TracerRead() {
 	log.Tracef("tracer msg read type:%d cont: %v", m.Type, string(m.Cont))
 }
-
