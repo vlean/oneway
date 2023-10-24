@@ -72,7 +72,7 @@ func (s *SessionManager) Create(ctx context.Context, sid string, expired int64) 
 		Session: &Session{
 			SessionId: sid,
 			Value:     "{}",
-			ExpiredAt: time.Unix(expired, 0),
+			ExpiredAt: s.time(expired),
 		},
 		db: Q(ctx),
 	}
@@ -80,10 +80,14 @@ func (s *SessionManager) Create(ctx context.Context, sid string, expired int64) 
 	return store, nil
 }
 
+func (s *SessionManager) time(expired int64) time.Time {
+	return time.Now().Add(time.Duration(expired) * time.Second)
+}
+
 func (s *SessionManager) Update(ctx context.Context, sid string, expired int64) (session.Store, error) {
 	if store, ok := s.cache.Load(sid); ok {
 		if st, ok := store.(*SessionStore); ok {
-			st.Session.ExpiredAt = time.Unix(expired, 0)
+			st.Session.ExpiredAt = s.time(expired)
 			return st, nil
 		}
 	}
