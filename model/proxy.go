@@ -56,4 +56,3 @@ func (f *ForwardDao) Domains() []string {
 		return item.From
 	}))
 }
-

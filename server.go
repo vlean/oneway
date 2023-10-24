@@ -117,15 +117,19 @@ func (s *server) callback(w http.ResponseWriter, r *http.Request) {
 	code := q.Get("code")
 	res, err := s.oauth.User(code)
 	if err != nil {
+		log.Errorf("oauth fail err: %v", err)
 		return
 	}
 	stroe, err := session.Start(context.Background(), w, r)
 	if err != nil {
+		log.Errorf("session start err: %v", err)
 		return
 	}
+	log.Tracef("proxy user email: %v", res.Email)
 	stroe.Set("email", res.Email)
 	err = stroe.Save()
 	if err != nil {
+		log.Errorf("store session err: %v", err)
 		return
 	}
 	if lo.Contains(s.App.Auth.Email, res.Email) {

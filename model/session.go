@@ -52,7 +52,7 @@ func (s *SessionManager) Check(ctx context.Context, sid string) (bool, error) {
 	ss := &Session{}
 	err := Q(ctx).Where("sid=? and expired_at>?", sid, time.Now()).First(ss).Error
 	if err != nil {
-		return false, err
+		return false, nil
 	}
 	data := make(map[string]any)
 	_ = json.Unmarshal([]byte(ss.Value), &data)
