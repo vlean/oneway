@@ -62,6 +62,9 @@ func (c *Pool) Get() (val *Conn) {
 	if err != nil {
 		return nil
 	}
+	if conn.Closed() {
+		return c.Get()
+	}
 
 	// 判断是否需要扩容
 	if c.q.GetLen() < 5 && c.size < 1e3 && !c.extent.Load() {
