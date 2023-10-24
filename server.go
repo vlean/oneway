@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -295,10 +296,18 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		log.Errorf("parser response err: %v", err)
 		return
 	}
+
+	// copy header
 	w.WriteHeader(response.StatusCode)
 	h := w.Header()
 	s.copyHeader(h, response.Header)
-	response.Write(w)
+
+	// copy body
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
+	_, err = w.Write(body)
 	return
 }
 
