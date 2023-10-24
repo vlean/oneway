@@ -1,5 +1,7 @@
 package oauth
 
+import "github.com/samber/lo"
+
 type gitee struct {
 	*base
 }
@@ -18,6 +20,7 @@ func (g *gitee) User(code string) (user User, err error) {
 			"client_id":     g.cfg.Auth.ClientId,
 			"client_secret": g.cfg.Auth.Token,
 			"code":          code,
+			"redirect_uri":  lo.If(g.cfg.StrictMode(), "https://").Else("http://") + g.cfg.System.Domain + "/auth/callback",
 		}).Post("https://gitee.com/oauth/token")
 	if err != nil || authRep.AccessToken == "" {
 		return
