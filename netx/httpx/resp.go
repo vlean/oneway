@@ -3,6 +3,7 @@ package httpx
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"io"
 	"net/http"
@@ -77,25 +78,25 @@ func ReadResponse(r *bufio.Reader) (*Response, error) {
 	resp.Body = &bytes.Buffer{}
 	if resp.Header.Get("Content-Encoding") == "gzip" {
 		resp.Header.Del("Content-Encoding")
-		resp.Compress = true
-		// rd, err := gzip.NewReader(tp.R)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// tmp := make([]byte, 512)
-		// for {
-		// 	n, err := rd.Read(tmp)
-		// 	if err != nil {
-		// 		if err == io.EOF {
-		// 			resp.Body.Write(tmp[:n])
-		// 			break
-		// 		}
-		// 		return nil, err
-		// 	}
-		// 	resp.Body.Write(tmp[:n])
-		// }
+		rd, err := gzip.NewReader(tp.R)
+		if err != nil {
+			return nil, err
+		}
+		tmp := make([]byte, 512)
+		for {
+			n, err := rd.Read(tmp)
+			if err != nil {
+				if err == io.EOF {
+					resp.Body.Write(tmp[:n])
+					break
+				}
+				return nil, err
+			}
+			resp.Body.Write(tmp[:n])
+		}
+	} else {
+		io.Copy(resp.Body, tp.R)
 	}
-	io.Copy(resp.Body, tp.R)
 	return resp, nil
 }
 

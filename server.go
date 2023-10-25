@@ -299,20 +299,17 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		log.Errorf("parser response err: %v", err)
 		return
 	}
-	log.Tracef("redirect length %v from %v to %v ", resp.Body.Len(), r.URL, nr)
+	log.Tracef("redirect length %v to %v ", resp.Body.Len(), nr.URL.Path)
 	h := w.Header()
 	resp.Header.Del("Connection")
 	s.copyHeader(h, resp.Header)
 	w.Header().Set("Content-Encoding", "gzip")
 
 	w.WriteHeader(resp.StatusCode)
-	if !resp.Compress {
-		gz := gzip.NewWriter(w)
-		defer gz.Close()
-		io.Copy(gz, resp.Body)
-	} else {
-		_, err = io.Copy(w, resp.Body)
-	}
+
+	gz := gzip.NewWriter(w)
+	defer gz.Close()
+	io.Copy(gz, resp.Body)
 	return
 }
 
