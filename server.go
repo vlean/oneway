@@ -299,7 +299,7 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		log.Errorf("parser response err: %v", err)
 		return
 	}
-
+	log.Tracef("redirect length %v from %v to %v ", resp.Body.Len(), r.URL, nr)
 	h := w.Header()
 	resp.Header.Del("Connection")
 	s.copyHeader(h, resp.Header)
