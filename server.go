@@ -13,6 +13,7 @@ import (
 	"gihub.com/vlean/oneway/gox"
 	"gihub.com/vlean/oneway/model"
 	"gihub.com/vlean/oneway/netx"
+	"gihub.com/vlean/oneway/netx/httpx"
 	"gihub.com/vlean/oneway/tool/oauth"
 	"github.com/foomo/simplecert"
 	"github.com/foomo/tlsconfig"
@@ -265,6 +266,9 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+	if nr.Header.Get("Content-Encoding") != "" {
+		nr.Header.Set("Content-Encoding", "gzip")
+	}
 
 	// proxy
 	pool := s.pg.Get(group)
@@ -290,24 +294,17 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	toMsg := conn.Read()
 	bff := &bytes.Buffer{}
 	bff.Write(toMsg.Cont)
-	br := bufio.NewReader(bff)
-	response, err := http.ReadResponse(br, nr)
+	resp, err := httpx.ReadResponse(bufio.NewReader(bff))
 	if err != nil {
 		log.Errorf("parser response err: %v", err)
 		return
 	}
 
-	// copy header
-	w.WriteHeader(response.StatusCode)
 	h := w.Header()
-	s.copyHeader(h, response.Header)
-
-	// copy body
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return
-	}
-	_, err = w.Write(body)
+	resp.Header.Del("Connection")
+	s.copyHeader(h, resp.Header)
+	w.WriteHeader(resp.StatusCode)
+	_, err = io.Copy(w, resp.Body)
 	return
 }
 

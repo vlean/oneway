@@ -2,7 +2,9 @@ package httpx
 
 import (
 	"bufio"
-	"fmt"
+	"bytes"
+	"compress/gzip"
+	"errors"
 	"io"
 	"net/http"
 	"net/textproto"
@@ -17,21 +19,18 @@ type Response struct {
 	ProtoMajor int    // e.g. 1
 	ProtoMinor int    // e.g. 0
 
-	Header  http.Header
-	Request *http.Request
-	reader  *textproto.Reader
+	Header http.Header
+
+	Body   *bytes.Buffer
+	reader *textproto.Reader
 }
 
-func badStringError(what, val string) error { return fmt.Errorf("%s %q", what, val) }
+func badStringError(f, v string) error {
+	return errors.New(f + " " + v)
+}
 
-func ReadResponse(r *bufio.Reader, req *http.Request) (*Response, error) {
+func ReadResponse(r *bufio.Reader) (*Response, error) {
 	tp := textproto.NewReader(r)
-	resp := &Response{
-		Request: req,
-		reader:  tp,
-	}
-
-	// Parse the first line of the response.
 	line, err := tp.ReadLine()
 	if err != nil {
 		if err == io.EOF {
@@ -39,6 +38,7 @@ func ReadResponse(r *bufio.Reader, req *http.Request) (*Response, error) {
 		}
 		return nil, err
 	}
+	resp := &Response{reader: tp}
 	proto, status, ok := strings.Cut(line, " ")
 	if !ok {
 		return nil, badStringError("malformed HTTP response", line)
@@ -74,12 +74,29 @@ func ReadResponse(r *bufio.Reader, req *http.Request) (*Response, error) {
 		return nil, err
 	}
 
+	resp.Body = &bytes.Buffer{}
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		resp.Header.Del("Content-Encoding")
+		rd, err := gzip.NewReader(tp.R)
+		if err != nil {
+			return nil, err
+		}
+		tmp := make([]byte, 512)
+		for {
+			n, err := rd.Read(tmp)
+			if err != nil {
+				if err == io.EOF {
+					resp.Body.Write(tmp[:n])
+					break
+				}
+				return nil, err
+			}
+			resp.Body.Write(tmp[:n])
+		}
+	} else {
+		io.Copy(resp.Body, tp.R)
+	}
 	return resp, nil
-}
-
-func (r *Response) WriteTo(w io.Writer) (l int64, err error) {
-	l, err = r.reader.R.WriteTo(w)
-	return
 }
 
 func fixPragmaCacheControl(header http.Header) {
@@ -89,4 +106,3 @@ func fixPragmaCacheControl(header http.Header) {
 		}
 	}
 }
-
