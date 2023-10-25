@@ -239,7 +239,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 	if err = nr.Write(bf); err != nil {
 		return
 	}
-	conn.Write(&netx.Msg{
+	pc.Write(&netx.Msg{
 		Type: websocket.TextMessage,
 		Cont: bf.Bytes(),
 	})
@@ -298,17 +298,14 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		log.Errorf("parser response err: %v", err)
 		return
 	}
-	log.Tracef("redirect length %v to %v ", resp.Body.Len(), nr.URL.EscapedPath())
+	log.Tracef("redirect length %v from %v to %v ", resp.Body.Len(),
+		nr.URL.Host,
+		nr.URL.EscapedPath())
 	h := w.Header()
 	resp.Header.Del("Connection")
 	s.copyHeader(h, resp.Header)
-	// w.Header().Set("Content-Encoding", "gzip")
 
 	w.WriteHeader(resp.StatusCode)
-
-	// gz := gzip.NewWriter(w)
-	// defer gz.Close()
-	// io.Copy(gz, resp.Body)
 	io.Copy(w, resp.Body)
 	return
 }

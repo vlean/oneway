@@ -114,21 +114,3 @@ func (c *Conn) writeMsg() {
 		}
 	}
 }
-
-type Msg struct {
-	Type int
-	Cont []byte
-}
-
-func (m *Msg) System() *PoolCtl {
-	pc := &PoolCtl{}
-	json.Unmarshal(m.Cont, pc)
-	return pc
-}
-
-func (m *Msg) TracerWrite() {
-	log.Tracef("tracer msg write type:%d cont: %v", m.Type, len(m.Cont))
-}
-func (m *Msg) TracerRead() {
-	log.Tracef("tracer msg read type:%d cont: %v", m.Type, len(m.Cont))
-}

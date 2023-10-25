@@ -82,6 +82,30 @@ func (c *client) handleMsg(msg *netx.Msg, conn *netx.Conn) {
 	}
 }
 
+func (c *client) wsproxy(req *http.Request, conn *netx.Conn) (err error) {
+	req.URL.Scheme = "ws"
+	if req.Header.Get("proxy_schema") == "https" {
+		req.URL.Scheme = "wss"
+	}
+	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), req.Header)
+	if err != nil {
+		return
+	}
+	to := netx.NewConn(ws)
+	gox.Run(func() {
+		defer to.Close()
+		for {
+			select {
+			case toMsg := <-to.ReadC():
+				conn.Write(toMsg)
+			case fMsg := <-conn.ReadC():
+				to.Write(fMsg)
+			}
+		}
+	})
+	return nil
+}
+
 func (c *client) transport(cont []byte, conn *netx.Conn) (err error) {
 	reader := bufio.NewReaderSize(bytes.NewReader(cont), len(cont))
 	req, err := http.ReadRequest(reader)
@@ -95,6 +119,13 @@ func (c *client) transport(cont []byte, conn *netx.Conn) (err error) {
 		req.URL.Scheme = "https"
 	}
 	req.RequestURI = ""
+	// 判断是否升级为wss
+	if req.Header.Get("Connection") == "Upgrade" &&
+		req.Header.Get("Upgrade") == "websocket" {
+		_ = c.wsproxy(req, conn)
+		return
+	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Errorf("query body err: %v", err)
