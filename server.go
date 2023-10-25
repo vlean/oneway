@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -299,17 +298,18 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		log.Errorf("parser response err: %v", err)
 		return
 	}
-	log.Tracef("redirect length %v to %v ", resp.Body.Len(), nr.URL.Path)
+	log.Tracef("redirect length %v to %v ", resp.Body.Len(), nr.URL.EscapedPath())
 	h := w.Header()
 	resp.Header.Del("Connection")
 	s.copyHeader(h, resp.Header)
-	w.Header().Set("Content-Encoding", "gzip")
+	// w.Header().Set("Content-Encoding", "gzip")
 
 	w.WriteHeader(resp.StatusCode)
 
-	gz := gzip.NewWriter(w)
-	defer gz.Close()
-	io.Copy(gz, resp.Body)
+	// gz := gzip.NewWriter(w)
+	// defer gz.Close()
+	// io.Copy(gz, resp.Body)
+	io.Copy(w, resp.Body)
 	return
 }
 
