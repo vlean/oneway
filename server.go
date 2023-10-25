@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -197,11 +198,10 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 
 	// 转发请求
 	if err := s.proxy(w, r); err != nil {
+		log.Errorf("proxy error %v", err)
+		w.WriteHeader(http.StatusForbidden)
 		return
 	}
-
-	// 默认处理
-	w.WriteHeader(http.StatusForbidden)
 }
 
 func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
@@ -303,8 +303,16 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	h := w.Header()
 	resp.Header.Del("Connection")
 	s.copyHeader(h, resp.Header)
+	w.Header().Set("Content-Encoding", "gzip")
+
 	w.WriteHeader(resp.StatusCode)
-	_, err = io.Copy(w, resp.Body)
+	if !resp.Compress {
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		io.Copy(gz, resp.Body)
+	} else {
+		_, err = io.Copy(w, resp.Body)
+	}
 	return
 }
 

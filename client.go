@@ -101,10 +101,11 @@ func (c *client) transport(cont []byte, conn *netx.Conn) (err error) {
 		return
 	}
 	bf := &bytes.Buffer{}
+	resp.TransferEncoding = nil
 	if err = resp.Write(bf); err != nil {
 		return
 	}
-	log.Tracef("http_redirect url:%v resp: %v", req.URL.String(), bf.String())
+	log.Tracef("http_redirect url:%v resp: %v", req.URL.String(), bf.Len())
 	conn.Write(&netx.Msg{
 		Type: websocket.TextMessage,
 		Cont: bf.Bytes(),

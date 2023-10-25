@@ -3,7 +3,6 @@ package httpx
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"errors"
 	"io"
 	"net/http"
@@ -21,8 +20,9 @@ type Response struct {
 
 	Header http.Header
 
-	Body   *bytes.Buffer
-	reader *textproto.Reader
+	Body     *bytes.Buffer
+	Compress bool
+	reader   *textproto.Reader
 }
 
 func badStringError(f, v string) error {
@@ -77,25 +77,25 @@ func ReadResponse(r *bufio.Reader) (*Response, error) {
 	resp.Body = &bytes.Buffer{}
 	if resp.Header.Get("Content-Encoding") == "gzip" {
 		resp.Header.Del("Content-Encoding")
-		rd, err := gzip.NewReader(tp.R)
-		if err != nil {
-			return nil, err
-		}
-		tmp := make([]byte, 512)
-		for {
-			n, err := rd.Read(tmp)
-			if err != nil {
-				if err == io.EOF {
-					resp.Body.Write(tmp[:n])
-					break
-				}
-				return nil, err
-			}
-			resp.Body.Write(tmp[:n])
-		}
-	} else {
-		io.Copy(resp.Body, tp.R)
+		resp.Compress = true
+		// rd, err := gzip.NewReader(tp.R)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		// tmp := make([]byte, 512)
+		// for {
+		// 	n, err := rd.Read(tmp)
+		// 	if err != nil {
+		// 		if err == io.EOF {
+		// 			resp.Body.Write(tmp[:n])
+		// 			break
+		// 		}
+		// 		return nil, err
+		// 	}
+		// 	resp.Body.Write(tmp[:n])
+		// }
 	}
+	io.Copy(resp.Body, tp.R)
 	return resp, nil
 }
 
