@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 
+	"gihub.com/vlean/oneway/api"
 	"gihub.com/vlean/oneway/config"
 	"gihub.com/vlean/oneway/gox"
 	"gihub.com/vlean/oneway/model"
@@ -17,6 +18,7 @@ import (
 	"gihub.com/vlean/oneway/tool/oauth"
 	"github.com/foomo/simplecert"
 	"github.com/foomo/tlsconfig"
+	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
@@ -31,9 +33,10 @@ func init() {
 		Aliases: []string{"server"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := &server{
-				App:   config.Global(),
-				pg:    netx.NewGroupPool(),
-				oauth: oauth.NewClient(config.Global()),
+				App:    config.Global(),
+				pg:     netx.NewGroupPool(),
+				oauth:  oauth.NewClient(config.Global()),
+				engine: gin.Default(),
 			}
 			return s.Run()
 		},
@@ -45,6 +48,7 @@ type server struct {
 	server *http.Server
 	pg     *netx.GroupPool
 	oauth  oauth.OAuth
+	engine *gin.Engine
 }
 
 func (s *server) Run() (err error) {
@@ -104,7 +108,7 @@ func (s *server) redirectHttps() {
 	_ = http.ListenAndServe(":80", mx)
 }
 
-func (s *server) router() *http.ServeMux {
+func (s *server) router() http.Handler {
 	mx := &http.ServeMux{}
 	mx.HandleFunc("/", s.handle)
 	mx.HandleFunc(s.App.System.Domain+"/connect", s.connect)
@@ -113,7 +117,9 @@ func (s *server) router() *http.ServeMux {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
-	return mx
+
+	api.Register(s.engine)
+	return s.engine
 }
 
 func (s *server) callback(w http.ResponseWriter, r *http.Request) {
@@ -247,6 +253,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 	// read&write
 	gox.Run(func() {
 		defer pool.Put(pc)
+		defer conn.Close()
 		for {
 			select {
 			case orgMsg := <-conn.ReadC():

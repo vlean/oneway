@@ -82,12 +82,23 @@ func (c *client) handleMsg(msg *netx.Msg, conn *netx.Conn) {
 	}
 }
 
+var (
+	headers = []string{"Cookie", "User-Agent"}
+)
+
 func (c *client) wsproxy(req *http.Request, conn *netx.Conn) (err error) {
 	req.URL.Scheme = "ws"
 	if req.Header.Get("proxy_schema") == "https" {
 		req.URL.Scheme = "wss"
 	}
-	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), req.Header)
+	h := http.Header{}
+	for _, k := range headers {
+		if v := req.Header.Get(k); v != "" {
+			h.Add(k, v)
+		}
+	}
+	// 白名单header
+	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), h)
 	if err != nil {
 		return
 	}
