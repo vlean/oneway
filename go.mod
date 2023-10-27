@@ -4,9 +4,9 @@ go 1.20
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/enriquebris/goconcurrentqueue v0.7.0
 	github.com/foomo/simplecert v1.8.7
 	github.com/foomo/tlsconfig v0.0.0-20180418120404-b67861b076c9
+	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.10.0
 	github.com/go-session/session/v3 v3.2.1
 	github.com/gorilla/websocket v1.5.0
@@ -54,7 +54,6 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-acme/lego/v4 v4.3.1 // indirect
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

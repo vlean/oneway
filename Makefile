@@ -13,3 +13,6 @@ server: build
 client: build
 	cp config.toml bin/config.toml
 	cd bin && ./oneway client -c config.toml
+
+web:
+	cd fe && npm run dev

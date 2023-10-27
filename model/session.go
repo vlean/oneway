@@ -11,7 +11,7 @@ import (
 )
 
 type Session struct {
-	gorm.Model
+	Model
 	SessionId string    `gorm:"column:sid"`
 	Value     string    `gorm:"column:value;size:2048;"`
 	ExpiredAt time.Time `gorm:"column:expired_at"`

@@ -13,9 +13,7 @@ import { Button, Divider, Drawer, message } from 'antd';
 import React, { useRef, useState } from 'react';
 import CreateForm from '@/components/Proxy/CreateForm';
 import UpdateForm, { FormValueType } from '@/components/Proxy/UpdateForm';
-
-const { addUser, queryUserList, deleteUser, modifyUser } =
-  services.UserController;
+import { forwardDel, forwardList, forwardSave } from '@/services/controller';
 
 /**
  * 添加节点
@@ -24,7 +22,7 @@ const { addUser, queryUserList, deleteUser, modifyUser } =
 const handleAdd = async (fields: any) => {
   const hide = message.loading('正在添加');
   try {
-    await addUser({ ...fields });
+    await forwardSave({ ...fields });
     hide();
     message.success('添加成功');
     return true;
@@ -39,18 +37,16 @@ const handleAdd = async (fields: any) => {
  * 更新节点
  * @param fields
  */
-const handleUpdate = async (fields: FormValueType) => {
+const handleUpdate = async (fields: any) => {
   const hide = message.loading('正在配置');
   try {
-    await modifyUser(
+    await forwardSave(
       {
-        userId: fields.id || '',
-      },
-      {
-        name: fields.name || '',
-        nickName: fields.nickName || '',
-        email: fields.email || '',
-      },
+        id: fields.id,
+        from: fields.from || '',
+        to: fields.to || '',
+        client: fields.client || 'default',
+      }
     );
     hide();
 
@@ -71,8 +67,8 @@ const handleRemove = async (selectedRows: any[]) => {
   const hide = message.loading('正在删除');
   if (!selectedRows) return true;
   try {
-    await deleteUser({
-      userId: selectedRows.find((row) => row.id)?.id || '',
+    await forwardDel({
+      id: selectedRows.find((row) => row.id)?.id || '',
     });
     hide();
     message.success('删除成功，即将刷新');
@@ -94,31 +90,29 @@ const Proxy: React.FC<unknown> = () => {
   const [selectedRowsState, setSelectedRows] = useState<any[]>([]);
   const columns: ProDescriptionsItemProps<any>[] = [
     {
-      title: '名称',
-      dataIndex: 'name',
-      tip: '名称是唯一的 key',
-      formItemProps: {
-        rules: [
-          {
-            required: true,
-            message: '名称为必填项',
-          },
-        ],
+      title: 'ID',
+      dataIndex: 'id',
+      tip: '',
+      hideInForm: true,
+    },
+    {
+      title: '协议',
+      dataIndex: 'schema',
+      // valueType: 'text',
+      valueEnum: {
+        https: { text: 'HTTPS', status: 'Success' },
+        http: { text: 'HTTP', status: 'Info' },
       },
     },
     {
-      title: '昵称',
-      dataIndex: 'nickName',
+      title: '来源域名',
+      dataIndex: 'from',
       valueType: 'text',
     },
     {
-      title: '性别',
-      dataIndex: 'gender',
-      hideInForm: true,
-      valueEnum: {
-        0: { text: '男', status: 'MALE' },
-        1: { text: '女', status: 'FEMALE' },
-      },
+      title: '转发域名',
+      dataIndex: 'to',
+      valueType: 'text',
     },
     {
       title: '操作',
@@ -148,7 +142,7 @@ const Proxy: React.FC<unknown> = () => {
       }}
     >
       <ProTable<any>
-        headerTitle="查询表格"
+        headerTitle="转发配置"
         actionRef={actionRef}
         rowKey="id"
         search={{
@@ -164,7 +158,7 @@ const Proxy: React.FC<unknown> = () => {
           </Button>,
         ]}
         request={async (params, sorter, filter) => {
-          const { data, success } = await queryUserList({
+          const { data, code } = await forwardList({
             ...params,
             // FIXME: remove @ts-ignore
             // @ts-ignore
@@ -172,8 +166,8 @@ const Proxy: React.FC<unknown> = () => {
             filter,
           });
           return {
-            data: data?.list || [],
-            success,
+            data: data || [],
+            success: code == 0,
           };
         }}
         columns={columns}
@@ -200,7 +194,6 @@ const Proxy: React.FC<unknown> = () => {
           >
             批量删除
           </Button>
-          <Button type="primary">批量审批</Button>
         </FooterToolbar>
       )}
       <CreateForm

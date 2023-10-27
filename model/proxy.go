@@ -2,17 +2,25 @@ package model
 
 import (
 	"context"
+	"time"
 
 	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
 
+type Model struct {
+	ID        uint           `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+}
+
 type Forward struct {
-	gorm.Model
-	From   string `gorm:"column:from"`
-	To     string `gorm:"column:to"`
-	Schema string `gorm:"column:schema;default:http"`
-	Client string `gorm:"column:client;default:default"`
+	Model
+	From   string `gorm:"column:from" json:"from"`
+	To     string `gorm:"column:to" json:"to"`
+	Schema string `gorm:"column:schema;default:http" json:"schema"`
+	Client string `gorm:"column:client;default:default" json:"client"`
 }
 
 func (f *Forward) TableName() string {
@@ -33,11 +41,15 @@ func NewForwardDao() *ForwardDao {
 
 func (f *ForwardDao) FindAll() []*Forward {
 	res := make([]*Forward, 0)
-	err := Q(context.Background()).Where("deleted_at is null").Find(&res).Error
+	err := Q(context.Background()).Find(&res).Error
 	if err != nil {
 		return nil
 	}
 	return res
+}
+
+func (f *ForwardDao) Save(fw *Forward) error {
+	return Q(context.Background()).Save(fw).Error
 }
 
 func (f *ForwardDao) Proxy(from string) *Forward {
