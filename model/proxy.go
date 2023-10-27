@@ -21,6 +21,7 @@ type Forward struct {
 	To     string `gorm:"column:to" json:"to"`
 	Schema string `gorm:"column:schema;default:http" json:"schema"`
 	Client string `gorm:"column:client;default:default" json:"client"`
+	Status int    `gorm:"column:status;default:1" json:"status"`
 }
 
 func (f *Forward) TableName() string {

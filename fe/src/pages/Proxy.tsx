@@ -1,6 +1,5 @@
 
 import styles from './Proxy.less';
-import services from '@/services/demo';
 import {
   ActionType,
   FooterToolbar,
@@ -9,7 +8,7 @@ import {
   ProDescriptionsItemProps,
   ProTable,
 } from '@ant-design/pro-components';
-import { Button, Divider, Drawer, message } from 'antd';
+import { Button, Divider, Drawer, message, Switch } from 'antd';
 import React, { useRef, useState } from 'react';
 import CreateForm from '@/components/Proxy/CreateForm';
 import UpdateForm, { FormValueType } from '@/components/Proxy/UpdateForm';
@@ -46,6 +45,7 @@ const handleUpdate = async (fields: any) => {
         from: fields.from || '',
         to: fields.to || '',
         client: fields.client || 'default',
+        status: fields.status || 1,
       }
     );
     hide();
@@ -84,7 +84,7 @@ const Proxy: React.FC<unknown> = () => {
   const [createModalVisible, handleModalVisible] = useState<boolean>(false);
   const [updateModalVisible, handleUpdateModalVisible] =
     useState<boolean>(false);
-  const [stepFormValues, setStepFormValues] = useState({});
+  const [formValues, setFormValues] = useState({});
   const actionRef = useRef<ActionType>();
   const [row, setRow] = useState<any>();
   const [selectedRowsState, setSelectedRows] = useState<any[]>([]);
@@ -115,6 +115,28 @@ const Proxy: React.FC<unknown> = () => {
       valueType: 'text',
     },
     {
+      title: '客户端',
+      dataIndex: 'client',
+      valueType: 'text',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status', 
+      valueType: 'option',
+      render: (_, record) => (
+        <>
+          <Switch checkedChildren="开启" unCheckedChildren="关闭" checked={record.status == 1}
+             onChange={(c: boolean) => {
+              console.log({record, status: c ? 1: 2})
+              handleUpdate({
+                record,
+                status: c ? 1 : 2
+              })
+          }}  />
+        </>
+      )
+    },
+    {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
@@ -122,14 +144,15 @@ const Proxy: React.FC<unknown> = () => {
         <>
           <a
             onClick={() => {
+              setFormValues(record);
               handleUpdateModalVisible(true);
-              setStepFormValues(record);
             }}
           >
-            配置
+            修改
           </a>
           <Divider type="vertical" />
-          <a href="">订阅警报</a>
+          {record.status == 1 &&  <a href=''>禁用</a>}
+          {record.status == 2 &&  <a href=''>启用</a>}
         </>
       ),
     },
@@ -215,13 +238,13 @@ const Proxy: React.FC<unknown> = () => {
           columns={columns}
         />
       </CreateForm>
-      {stepFormValues && Object.keys(stepFormValues).length ? (
+      {formValues && Object.keys(formValues).length ? (
         <UpdateForm
           onSubmit={async (value) => {
             const success = await handleUpdate(value);
             if (success) {
               handleUpdateModalVisible(false);
-              setStepFormValues({});
+              setFormValues({});
               if (actionRef.current) {
                 actionRef.current.reload();
               }
@@ -229,11 +252,12 @@ const Proxy: React.FC<unknown> = () => {
           }}
           onCancel={() => {
             handleUpdateModalVisible(false);
-            setStepFormValues({});
+            setFormValues({});
           }}
           updateModalVisible={updateModalVisible}
-          values={stepFormValues}
-        />
+          values={formValues}
+        >
+        </UpdateForm>
       ) : null}
 
       <Drawer

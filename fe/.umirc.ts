@@ -31,7 +31,7 @@ export default defineConfig({
     }
   },
   layout: {
-    title: 'oneway',
+    title: 'oneway'
   },
   routes: [
     {
@@ -55,6 +55,15 @@ export default defineConfig({
       path: '/setting',
       component: "./Setting",
       icon: 'SettingOutlined'
+    },
+    {
+      path: '/login', 
+      component: "Login",
+      hideInMenu: true, 
+      headerRender: true,
+      menuRender: false,
+      fixedHeader: false,
+      footerRender: false,
     }
   ],
   npmClient: 'npm',
