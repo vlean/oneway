@@ -74,10 +74,6 @@ const UpdateForm: React.FC<PropsWithChildren<any>> = (props) => {
           label="来源域名"
         />
         <ProFormText 
-          name="from"
-          label="来源域名"
-        />
-         <ProFormText 
           name="to"
           label="转发域名"
         />

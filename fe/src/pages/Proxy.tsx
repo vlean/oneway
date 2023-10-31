@@ -45,6 +45,7 @@ const handleUpdate = async (fields: any) => {
         from: fields.from || '',
         to: fields.to || '',
         client: fields.client || 'default',
+        schema: fields.schema || 'https',
         status: fields.status || 1,
       }
     );
@@ -68,7 +69,7 @@ const handleRemove = async (selectedRows: any[]) => {
   if (!selectedRows) return true;
   try {
     await forwardDel({
-      id: selectedRows.find((row) => row.id)?.id || '',
+      ids: selectedRows.map((row) => row.id) || [],
     });
     hide();
     message.success('删除成功，即将刷新');
@@ -127,11 +128,15 @@ const Proxy: React.FC<unknown> = () => {
         <>
           <Switch checkedChildren="开启" unCheckedChildren="关闭" checked={record.status == 1}
              onChange={(c: boolean) => {
-              console.log({record, status: c ? 1: 2})
+              console.log({...record, status: c ? 1: 2})
               handleUpdate({
-                record,
+                ...record,
                 status: c ? 1 : 2
               })
+              if (actionRef.current) {
+                actionRef.current.reload();
+              }
+
           }}  />
         </>
       )
@@ -151,8 +156,12 @@ const Proxy: React.FC<unknown> = () => {
             修改
           </a>
           <Divider type="vertical" />
-          {record.status == 1 &&  <a href=''>禁用</a>}
-          {record.status == 2 &&  <a href=''>启用</a>}
+          <a href='#' onClick={()=> {
+            handleRemove([record])
+            if (actionRef.current) {
+              actionRef.current.reload();
+            }
+          }}>删除</a>
         </>
       ),
     },

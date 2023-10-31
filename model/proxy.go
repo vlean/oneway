@@ -52,6 +52,9 @@ func (f *ForwardDao) FindAll() []*Forward {
 func (f *ForwardDao) Save(fw *Forward) error {
 	return Q(context.Background()).Save(fw).Error
 }
+func (f *ForwardDao) Delete(id []int) error {
+	return Q(context.Background()).Where("id in ?", id).Delete(&Forward{}).Error
+}
 
 func (f *ForwardDao) Proxy(from string) *Forward {
 	res := f.FindAll()

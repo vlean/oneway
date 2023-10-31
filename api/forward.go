@@ -5,6 +5,7 @@ import (
 
 	"gihub.com/vlean/oneway/model"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
 type ForwardListReq struct {
@@ -45,4 +46,18 @@ func ForwardSave(ctx *gin.Context) (data any, err error) {
 
 	err = model.NewForwardDao().Save(&req)
 	return req, err
+}
+
+type ForwardDeleteReq struct {
+	Ids []int `json:ids`
+}
+
+func ForwardDelete(ctx *gin.Context) (data any, err error) {
+	req, err := Bind[ForwardDeleteReq](ctx)
+	if err != nil {
+		return
+	}
+	log.Debugf("delete ids %v", req.Ids)
+	err = model.NewForwardDao().Delete(req.Ids)
+	return
 }

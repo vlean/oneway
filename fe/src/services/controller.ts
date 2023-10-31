@@ -36,3 +36,10 @@ export async function userinfo() {
         method: 'GET',
     })
 }
+
+
+export async function systemConfig() {
+  return request<API.Response>('/api/system/config', {
+      method: 'GET',
+  })
+}
