@@ -245,7 +245,6 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
-	return nil
 	store, err := session.Start(context.Background(), w, r)
 	if err != nil {
 		return err
