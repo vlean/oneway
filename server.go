@@ -188,9 +188,16 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 	if r.TLS != nil && r.URL.Scheme == "" {
 		r.URL.Scheme = "https"
 	}
-	// 拦截
 	log.Tracef("system domain %v", r.URL.Host)
-	if r.URL.Host == s.System.Domain {
+	// 鉴权
+	if s.auth(w, r) != nil {
+		r.URL.Host = r.Host
+		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
+		return
+	}
+
+	// 拦截
+	if r.Host == s.System.Domain {
 		path := r.URL.Path
 		if strings.HasPrefix(path, "/api/") {
 			s.engine.ServeHTTP(w, r)
@@ -200,20 +207,13 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 		if path == "" || path == "/" {
 			path = "/index.html"
 		}
-		cont, err := feResource.ReadFile("bin/dist/" + path)
+		cont, err := feResource.ReadFile("bin/dist" + path)
 		if err != nil {
 			log.Warnf("read file err: %v path: %v", err, path)
 			return
 		}
 		// 增加cache
 		w.Write(cont)
-		return
-	}
-
-	// 鉴权
-	if s.auth(w, r) != nil {
-		r.URL.Host = r.Host
-		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
 		return
 	}
 

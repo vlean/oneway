@@ -1,23 +1,26 @@
 
-allbuild: wbuild build
+allbuild: build webuild
+
+## 构建
+webuild:
+	mkdir -p bin
+	cd fe && npm run build && mv dist ../bin/
 
 build:
 	mkdir -p bin
+	cp config.toml bin/config.toml
 	go build -tags "nethttpomithttp2" -o bin/oneway *.go
 
-pull:
-	git pull 
-
-server: build
-	cp config.toml bin/config.toml
+## 启动
+runserver:
 	cd bin && ./oneway server -c config.toml
-
-client: build
-	cp config.toml bin/config.toml
+runclient:
 	cd bin && ./oneway client -c config.toml
-
-web:
+runweb:
 	cd fe && npm run dev
 
-wbuild:
-	cd fe && npm run build && mv dist ../api/
+server: build runserver
+
+client: build runserver
+
+web: runweb

@@ -53,12 +53,12 @@ export const request  = () => {
     requestInterceptors: [
         (url: any, options: any) => {
           // 鉴权
-          const email = localStorage.getItem("email") || ""
-          if (url != "/api/user" && email == "") {
-            message.warning("跳转登录ing");
-            window.location.href = '/login';
-            return {}
-          }
+          // const email = localStorage.getItem("email") || ""
+          // if (url != "/api/user" && email == "") {
+          //   message.warning("跳转登录ing");
+          //   window.location.href = '/login';
+          //   return {}
+          // }
           return {url, options}
         }
     ],
