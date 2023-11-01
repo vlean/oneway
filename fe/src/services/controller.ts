@@ -43,3 +43,10 @@ export async function systemConfig() {
       method: 'GET',
   })
 }
+
+export async function systemConfigUpdate(data: any) {
+  return request<API.Response>('/api/system/config/update', {
+      method: 'POST',
+      data: data, 
+  })
+}

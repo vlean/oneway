@@ -1,4 +1,5 @@
 import { defineConfig } from '@umijs/max';
+import { message } from 'antd';
 
 export default defineConfig({
   antd: {
@@ -13,23 +14,7 @@ export default defineConfig({
       'target': 'http://127.0.0.1:8080'
     }
   },
-  request: {
-    dataField: 'data',
-    errorThrower: (res: any) => {
-      if (res.code != 0) {
-        const error: any = new Error(res.msg);
-        error.name = 'BizError';
-        throw error;
-      }
-    },
-    errorHandler: (error: any, opts: any) => {
-      if (opts?.skipErrorHandler) throw error;
-      // 我们的 errorThrower 抛出的错误。
-      if (error.name === 'BizError') {
-        message.error(error.errorMessage);
-      }
-    }
-  },
+  request: {},
   layout: {
     title: 'oneway'
   },
@@ -60,10 +45,7 @@ export default defineConfig({
       path: '/login', 
       component: "Login",
       hideInMenu: true, 
-      headerRender: true,
-      menuRender: false,
-      fixedHeader: false,
-      footerRender: false,
+      layout: false,
     }
   ],
   npmClient: 'npm',

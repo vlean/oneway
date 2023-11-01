@@ -25,6 +25,15 @@ func (a *App) RootDomain() string {
 	return "." + strings.Join(ss[1:], ".")
 }
 
+func (a *App) GatewayDomain() string {
+	u := "http"
+	if a.StrictMode() {
+		u = "https"
+	}
+	u += "://" + a.System.Domain
+	return u
+}
+
 func (a *App) AuthUrl(to *url.URL) string {
 	redirect := lo.If(a.StrictMode(), "https://").Else("http://") + a.System.Domain + "/auth/callback"
 	ru, _ := url.Parse(redirect)
@@ -54,7 +63,7 @@ type Client struct {
 }
 
 type Server struct {
-	ForceHttps bool `json:"force_https"`
+	ForceHttps bool `toml:"force_https"`
 }
 
 type Cloudflare struct {

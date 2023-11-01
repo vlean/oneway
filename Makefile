@@ -1,4 +1,6 @@
 
+allbuild: wbuild build
+
 build:
 	mkdir -p bin
 	go build -tags "nethttpomithttp2" -o bin/oneway *.go
@@ -16,3 +18,6 @@ client: build
 
 web:
 	cd fe && npm run dev
+
+wbuild:
+	cd fe && npm run build && mv dist ../api/

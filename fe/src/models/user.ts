@@ -3,10 +3,10 @@ import { DEFAULT_NAME } from '@/constants';
 import { useState } from 'react';
 
 const useUser = () => {
-  const [name, setName] = useState<string>(DEFAULT_NAME);
+  const [email, setEmail] = useState<string>("");
   return {
-    name,
-    setName,
+    email,
+    setEmail,
   };
 };
 

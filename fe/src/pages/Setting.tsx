@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './Setting.less';
-import { systemConfig } from '@/services/controller';
-import { ProForm, ProFormInstance, ProFormRadio, ProFormSwitch, ProFormText } from '@ant-design/pro-components';
-import { Divider } from 'antd';
+import { systemConfig, systemConfigUpdate } from '@/services/controller';
+import { PageContainer, ProForm, ProFormInstance, ProFormRadio, ProFormSwitch, ProFormText } from '@ant-design/pro-components';
+import { Divider, message } from 'antd';
 
 export default function Page() {
   const [cfg, setCfg] = useState<any>(null);
@@ -18,15 +18,28 @@ export default function Page() {
     loadCfg();
   }, []);
   return (
-  
+    <PageContainer
+      header={{
+        title: '全局设置',
+      }}
+    >
     <ProForm
-        title="全局设置"
         onFinish={async (values) => {
-          console.log('Received values of form:', values);
+          const hide = message.loading('正在配置');
+          try {
+            const rep = await systemConfigUpdate(values);
+            hide();
+            if (rep.code != 0) {
+              message.warning(rep.msg);
+              return;
+            }
+            message.success("更新成功!");
+          } catch(e) {
+            hide();
+            message.error(e);
+          }
         }}
         layout='horizontal'
-        labelCol={{span: 4}}
-        wrapperCol={{span: 12}}
         request={async () => {
           const rep = await systemConfig();
           return rep.data;
@@ -109,5 +122,6 @@ export default function Page() {
         <ProFormText name={["Auth", "Email"]} label="邮箱" />
         </ProForm.Group>
     </ProForm>
+    </PageContainer>
   );
 }
