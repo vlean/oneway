@@ -18,6 +18,7 @@ import (
 	"gihub.com/vlean/oneway/netx"
 	"gihub.com/vlean/oneway/netx/httpx"
 	"gihub.com/vlean/oneway/tool/oauth"
+	"gihub.com/vlean/oneway/tool/stat"
 	"github.com/foomo/simplecert"
 	"github.com/foomo/tlsconfig"
 	"github.com/gin-gonic/gin"
@@ -40,6 +41,7 @@ func init() {
 				oauth:  oauth.NewClient(config.Global()),
 				engine: gin.Default(),
 			}
+			netx.SetGloablGP(s.pg)
 			return s.Run()
 		},
 	})
@@ -57,11 +59,13 @@ type server struct {
 var feResource embed.FS
 
 func (s *server) Run() (err error) {
+	model.InitDB()
+
 	// session
 	session.InitManager(
 		session.SetDomain(s.RootDomain()),
 		session.SetEnableSetCookie(true),
-		session.SetExpired(3600*24),
+		session.SetExpired(3600*s.App.Auth.Expire),
 		session.SetSecure(s.App.StrictMode()),
 		session.SetStore(model.NewSessionManager()),
 	)
@@ -118,11 +122,6 @@ func (s *server) router() http.Handler {
 	mx.HandleFunc("/", s.handle)
 	mx.HandleFunc(s.App.System.Domain+"/connect", s.connect)
 	mx.HandleFunc(s.App.System.Domain+"/auth/callback", s.callback)
-	mx.HandleFunc("/mock", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
-
 	api.Register(s.engine)
 	return mx
 }
@@ -188,9 +187,11 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 	if r.TLS != nil && r.URL.Scheme == "" {
 		r.URL.Scheme = "https"
 	}
-	log.Tracef("system domain %v", r.URL.Host)
+	stat.HttpIncr(stat.Request)
+
 	// 鉴权
 	if s.auth(w, r) != nil {
+		stat.HttpIncr(stat.AuthFail)
 		r.URL.Host = r.Host
 		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
 		return
@@ -207,13 +208,20 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 		if path == "" || path == "/" {
 			path = "/index.html"
 		}
-		cont, err := feResource.ReadFile("bin/dist" + path)
-		if err != nil {
-			log.Warnf("read file err: %v path: %v", err, path)
-			return
+		switch path {
+		case "/connect":
+			s.connect(w, r)
+		case "/auth/callback":
+			s.callback(w, r)
+		default:
+			cont, err := feResource.ReadFile("bin/dist" + path)
+			if err != nil {
+				log.Warnf("read file err: %v path: %v", err, path)
+				return
+			}
+			// 增加cache
+			w.Write(cont)
 		}
-		// 增加cache
-		w.Write(cont)
 		return
 	}
 
@@ -237,6 +245,7 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
+	return nil
 	store, err := session.Start(context.Background(), w, r)
 	if err != nil {
 		return err

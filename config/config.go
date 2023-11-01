@@ -63,7 +63,8 @@ type Client struct {
 }
 
 type Server struct {
-	ForceHttps bool `toml:"force_https"`
+	Domain     string `toml:"domain"`
+	ForceHttps bool   `toml:"force_https"`
 }
 
 type Cloudflare struct {
@@ -74,8 +75,9 @@ type Cloudflare struct {
 }
 
 type Auth struct {
-	Mode     string   `toml:"mode"`  // 默认github
-	Email    []string `toml:"email"` // 允许邮箱
+	Mode     string   `toml:"mode"`   // 默认github
+	Expire   int64    `toml:"expire"` // 过期时间 h
+	Email    []string `toml:"email"`  // 允许邮箱
 	Token    string   `toml:"token"`
 	ClientId string   `toml:"client_id"`
 }
@@ -94,7 +96,8 @@ func init() {
 			Mode: "strict",
 		},
 		Auth: Auth{
-			Mode: "github",
+			Mode:   "github",
+			Expire: 24,
 		},
 		Server: Server{
 			ForceHttps: true,

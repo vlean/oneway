@@ -12,7 +12,7 @@ import (
 
 var db *gorm.DB
 
-func init() {
+func InitDB() {
 	d, err := gorm.Open(sqlite.Open("one.db"), &gorm.Config{
 		Logger: logger.New(
 			log.New(os.Stdout, "\r\n", log.LstdFlags), // 自定义日志输出

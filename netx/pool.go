@@ -114,3 +114,33 @@ func (g *GroupPool) Add(group string, pool *Pool) {
 	defer g.Unlock()
 	g.pool[group] = pool
 }
+
+func (g *GroupPool) Stat() []Stat {
+	g.Lock()
+	defer g.Unlock()
+	ret := make([]Stat, 0)
+	for name, pool := range g.pool {
+		ret = append(ret, Stat{
+			Name: name,
+			Size: pool.size,
+			Use:  pool.Len(),
+		})
+	}
+	return ret
+}
+
+type Stat struct {
+	Name string `json:"name"`
+	Size int    `json:"size"`
+	Use  int    `json:"use"`
+}
+
+var _gloabl *GroupPool
+
+func SetGloablGP(c *GroupPool) {
+	_gloabl = c
+}
+
+func GlobalGP() *GroupPool {
+	return _gloabl
+}

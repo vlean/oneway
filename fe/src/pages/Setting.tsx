@@ -2,10 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import styles from './Setting.less';
 import { systemConfig, systemConfigUpdate } from '@/services/controller';
 import { PageContainer, ProForm, ProFormInstance, ProFormRadio, ProFormSwitch, ProFormText } from '@ant-design/pro-components';
-import { Divider, message } from 'antd';
+import { Button, Divider, message } from 'antd';
 
 export default function Page() {
   const [cfg, setCfg] = useState<any>(null);
+  const [read, setRead] = useState<boolean>(true);
   const formRef = useRef<ProFormInstance>();
 
   const loadCfg = async () => {
@@ -24,6 +25,7 @@ export default function Page() {
       }}
     >
     <ProForm
+        readonly={read}
         onFinish={async (values) => {
           const hide = message.loading('正在配置');
           try {
@@ -33,6 +35,7 @@ export default function Page() {
               message.warning(rep.msg);
               return;
             }
+            setRead(!read);
             message.success("更新成功!");
           } catch(e) {
             hide();
@@ -45,6 +48,25 @@ export default function Page() {
           return rep.data;
         }}
         formRef={formRef}
+        submitter={{
+          render: (props, doms) => {
+            if (read) {
+              return [
+                <Button
+                htmlType="button"
+                onClick={() => {
+                   setRead(!read);
+                }}
+                key="edit"
+              >
+                编辑
+              </Button>
+              ]
+            }
+            return [
+              ...doms,
+            ]},
+        }}
       >
         <ProForm.Group title="系统设置">
            <ProFormText name={["System","Host"]} label="Host" initialValue={"0.0.0.0"} />

@@ -8,7 +8,7 @@ export async function forwardList(
   },
   options?: { [key: string]: any },
 ) {
-  return request<API.Response>('/api/forward', {
+  return request<API.Response>('/api/forward/list', {
     method: 'GET',
     params: {
         page: 1,
@@ -48,5 +48,11 @@ export async function systemConfigUpdate(data: any) {
   return request<API.Response>('/api/system/config/update', {
       method: 'POST',
       data: data, 
+  })
+}
+
+export async function stat() {
+  return request<API.Response>('/api/stat/info', {
+      method: 'GET',
   })
 }

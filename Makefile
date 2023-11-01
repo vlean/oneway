@@ -21,6 +21,6 @@ runweb:
 
 server: build runserver
 
-client: build runserver
+client: build runclient
 
 web: runweb
