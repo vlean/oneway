@@ -1,10 +1,11 @@
 
-allbuild: build webuild
+allbuild: webuild build
 
 ## 构建
 webuild:
-	mkdir -p bin
+	mkdir -p bin && rm -rf bin/dist
 	cd fe && npm run build && mv dist ../bin/
+	cp fe/favicon.ico bin/dist
 
 build:
 	mkdir -p bin

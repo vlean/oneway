@@ -106,11 +106,14 @@ func (s *server) Run() (err error) {
 func (s *server) redirectHttps() {
 	mx := &http.ServeMux{}
 	mx.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		r.URL.Host = r.Host
+		log.Tracef("https force redirect from %v", r.URL.String())
 		if r.URL.Scheme == "http" {
 			r.URL.Scheme = "https"
 		} else if r.URL.Scheme == "ws" {
 			r.URL.Scheme = "wss"
 		}
+		log.Tracef("https force redirect to %v", r.URL.String())
 		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 	})
 	log.Info("http force http server listen :80")
@@ -204,21 +207,25 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 			s.engine.ServeHTTP(w, r)
 			return
 		}
-		// 静态资源
-		if path == "" || path == "/" {
-			path = "/index.html"
-		}
+
 		switch path {
 		case "/connect":
 			s.connect(w, r)
 		case "/auth/callback":
 			s.callback(w, r)
 		default:
+			if !(strings.HasSuffix(path, ".js") ||
+				strings.HasSuffix(path, ".css") ||
+				strings.HasSuffix(path, ".ico")) {
+				path = "/index.html"
+			}
 			cont, err := feResource.ReadFile("bin/dist" + path)
 			if err != nil {
 				log.Warnf("read file err: %v path: %v", err, path)
 				return
 			}
+			h := w.Header()
+			h.Add("Cache-Control", "public, max-age=86400")
 			// 增加cache
 			w.Write(cont)
 		}

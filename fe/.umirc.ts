@@ -8,6 +8,7 @@ export default defineConfig({
   },
   access: {},
   model: {},
+  favicons: ["favicon.ico"],
   initialState: {},
   proxy: {
     '/api': {
