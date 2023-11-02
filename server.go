@@ -200,6 +200,9 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 func (s *server) canProxy(w http.ResponseWriter, r *http.Request) bool {
 	ok := model.NewForwardDao().Proxy(r.Host) != nil
 	if !ok {
+		ok = r.Host == s.App.System.Domain
+	}
+	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 	}
 	return ok
