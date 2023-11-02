@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/samber/lo"
@@ -29,15 +30,34 @@ func (f *Forward) TableName() string {
 }
 
 var (
-	_forwardGlobal map[string]*Forward
+	_forwardDao  *ForwardDao
+	_forwardOnce sync.Once
 )
 
 type ForwardDao struct {
-	db *gorm.DB
+	db     *gorm.DB
+	lock   sync.RWMutex
+	proxys map[string]*Forward
 }
 
 func NewForwardDao() *ForwardDao {
-	return &ForwardDao{db: DB()}
+	_forwardOnce.Do(func() {
+		_forwardDao = &ForwardDao{db: DB()}
+		_forwardDao.load()
+	})
+	return _forwardDao
+}
+
+func (f *ForwardDao) load() {
+	res := f.FindAll()
+	_fmap := make(map[string]*Forward)
+	for _, re := range res {
+		tmp := re
+		_fmap[tmp.From] = tmp
+	}
+	f.lock.Lock()
+	defer f.lock.Unlock()
+	f.proxys = _fmap
 }
 
 func (f *ForwardDao) FindAll() []*Forward {
@@ -50,20 +70,24 @@ func (f *ForwardDao) FindAll() []*Forward {
 }
 
 func (f *ForwardDao) Save(fw *Forward) error {
-	return Q(context.Background()).Save(fw).Error
+	err := Q(context.Background()).Save(fw).Error
+	if err == nil {
+		f.load()
+	}
+	return err
 }
 func (f *ForwardDao) Delete(id []int) error {
-	return Q(context.Background()).Where("id in ?", id).Delete(&Forward{}).Error
+	err := Q(context.Background()).Where("id in ?", id).Delete(&Forward{}).Error
+	if err == nil {
+		f.load()
+	}
+	return err
 }
 
 func (f *ForwardDao) Proxy(from string) *Forward {
-	res := f.FindAll()
-	_fmap := make(map[string]*Forward)
-	for _, re := range res {
-		tmp := re
-		_fmap[tmp.From] = tmp
-	}
-	return _fmap[from]
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+	return f.proxys[from]
 }
 
 func (f *ForwardDao) Domains() []string {

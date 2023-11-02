@@ -106,6 +106,10 @@ func (s *server) Run() (err error) {
 func (s *server) redirectHttps() {
 	mx := &http.ServeMux{}
 	mx.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// 拦截
+		if !s.canProxy(w, r) {
+			return
+		}
 		r.URL.Host = r.Host
 		log.Tracef("https force redirect from %v", r.URL.String())
 		switch r.URL.Scheme {
@@ -193,7 +197,19 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *server) canProxy(w http.ResponseWriter, r *http.Request) bool {
+	ok := model.NewForwardDao().Proxy(r.Host) != nil
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+	}
+	return ok
+}
+
 func (s *server) handle(w http.ResponseWriter, r *http.Request) {
+	// 拦截
+	if !s.canProxy(w, r) {
+		return
+	}
 	r.URL.Host = r.Host
 	if r.TLS != nil && r.URL.Scheme == "" {
 		r.URL.Scheme = "https"
