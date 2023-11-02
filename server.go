@@ -108,10 +108,18 @@ func (s *server) redirectHttps() {
 	mx.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Host = r.Host
 		log.Tracef("https force redirect from %v", r.URL.String())
-		if r.URL.Scheme == "http" {
-			r.URL.Scheme = "https"
-		} else if r.URL.Scheme == "ws" {
+		switch r.URL.Scheme {
+		case "ws":
 			r.URL.Scheme = "wss"
+		case "":
+			if r.Header.Get("Connection") == "Upgrade" &&
+				r.Header.Get("Upgrade") == "websocket" {
+				r.URL.Scheme = "wss"
+			} else {
+				r.URL.Scheme = "https"
+			}
+		default:
+			r.URL.Scheme = "https"
 		}
 		log.Tracef("https force redirect to %v", r.URL.String())
 		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)

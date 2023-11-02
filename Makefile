@@ -12,6 +12,8 @@ build:
 	cp config.toml bin/config.toml
 	go build -tags "nethttpomithttp2" -o bin/oneway *.go
 
+pull:
+	git pull
 ## 启动
 runserver:
 	cd bin && ./oneway server -c config.toml
