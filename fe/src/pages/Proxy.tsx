@@ -8,11 +8,12 @@ import {
   ProDescriptionsItemProps,
   ProTable,
 } from '@ant-design/pro-components';
-import { Button, Divider, Drawer, message, Switch } from 'antd';
+import { Button, Divider, Drawer, message, Switch, Tag } from 'antd';
 import React, { useRef, useState } from 'react';
 import CreateForm from '@/components/Proxy/CreateForm';
 import UpdateForm, { FormValueType } from '@/components/Proxy/UpdateForm';
 import { forwardDel, forwardList, forwardSave } from '@/services/controller';
+import { Link } from '@umijs/max';
 
 /**
  * 添加节点
@@ -88,42 +89,57 @@ const Proxy: React.FC<unknown> = () => {
   const [formValues, setFormValues] = useState({});
   const actionRef = useRef<ActionType>();
   const [row, setRow] = useState<any>();
-  const [selectedRowsState, setSelectedRows] = useState<any[]>([]);
   const columns: ProDescriptionsItemProps<any>[] = [
     {
       title: 'ID',
       dataIndex: 'id',
       tip: '',
       hideInForm: true,
+      hideInSearch: true,
+    },
+    {
+      title: '来源域名',
+      dataIndex: 'from',
+      valueType: 'text',
+      render: (_, record) => (
+        <>
+           <Link to={'https://'+record.from} target='_blank'> <Tag color="success">https://{record.from}</Tag> </Link>
+        </>
+      )
     },
     {
       title: '协议',
       dataIndex: 'schema',
       // valueType: 'text',
+      hideInTable: true,
+      hideInSearch: true,
       valueEnum: {
         https: { text: 'HTTPS', status: 'Success' },
         http: { text: 'HTTP', status: 'Info' },
       },
     },
     {
-      title: '来源域名',
-      dataIndex: 'from',
-      valueType: 'text',
-    },
-    {
       title: '转发域名',
       dataIndex: 'to',
       valueType: 'text',
+      render: (_, record) => (
+        <>
+
+           <Tag color={record.schema == 'https'? 'success' :'default'}>{record.schema}://{record.to}</Tag>
+        </>
+      )
     },
     {
       title: '客户端',
       dataIndex: 'client',
       valueType: 'text',
+      hideInSearch: true,
     },
     {
       title: '状态',
       dataIndex: 'status', 
       valueType: 'option',
+      hideInSearch: true,
       render: (_, record) => (
         <>
           <Switch checkedChildren="开启" unCheckedChildren="关闭" checked={record.status == 1}
@@ -203,31 +219,7 @@ const Proxy: React.FC<unknown> = () => {
           };
         }}
         columns={columns}
-        rowSelection={{
-          onChange: (_, selectedRows) => setSelectedRows(selectedRows),
-        }}
       />
-      {selectedRowsState?.length > 0 && (
-        <FooterToolbar
-          extra={
-            <div>
-              已选择{' '}
-              <a style={{ fontWeight: 600 }}>{selectedRowsState.length}</a>{' '}
-              项&nbsp;&nbsp;
-            </div>
-          }
-        >
-          <Button
-            onClick={async () => {
-              await handleRemove(selectedRowsState);
-              setSelectedRows([]);
-              actionRef.current?.reloadAndRest?.();
-            }}
-          >
-            批量删除
-          </Button>
-        </FooterToolbar>
-      )}
       <CreateForm
         onCancel={() => handleModalVisible(false)}
         modalVisible={createModalVisible}

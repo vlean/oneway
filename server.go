@@ -41,6 +41,9 @@ func init() {
 				oauth:  oauth.NewClient(config.Global()),
 				engine: gin.Default(),
 			}
+			if s.App.System.Token == "" {
+				s.App.System.Token = config.Token()
+			}
 			netx.SetGloablGP(s.pg)
 			return s.Run()
 		},
@@ -183,6 +186,12 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 		r.Header.Get("Upgrade") == "websocket" {
 		conn, err := netx.Upgrader.Upgrade(w, r, nil)
 		if err != nil {
+			return
+		}
+
+		if r.URL.Query().Get("token") != s.App.System.Token {
+			log.Warnf("err connection %v", r.URL.String())
+			w.WriteHeader(http.StatusForbidden)
 			return
 		}
 

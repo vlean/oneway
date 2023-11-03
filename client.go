@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"net/http"
 
 	"gihub.com/vlean/oneway/config"
@@ -15,7 +16,7 @@ import (
 )
 
 func init() {
-	root.AddCommand(&cobra.Command{
+	cmd := &cobra.Command{
 		Use: "client",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c := &client{
@@ -26,7 +27,8 @@ func init() {
 			c.Run()
 			return nil
 		},
-	})
+	}
+	root.AddCommand(cmd)
 }
 
 type client struct {
@@ -47,8 +49,8 @@ func (c *client) Run() {
 }
 
 func (c *client) buildConn() (conn *netx.Conn, err error) {
-	remote := lo.If(c.StrictMode(), "wss://").Else("ws://") +
-		c.Client.Remote + "/connect?name=" + c.Client.Name
+	schema := lo.If(c.StrictMode(), "wss").Else("ws")
+	remote := fmt.Sprintf("%s://%s/connect?name=%s&token=%s", schema, c.Client.Remote, c.Client.Name, c.System.Token)
 	log.Tracef("remote_connect %v", remote)
 	ws, _, err := websocket.DefaultDialer.Dial(remote, nil)
 	if err != nil {

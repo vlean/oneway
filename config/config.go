@@ -1,10 +1,14 @@
 package config
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/url"
 	"os"
 	"strings"
 
+	"github.com/go-acme/lego/v4/log"
 	"github.com/samber/lo"
 )
 
@@ -54,7 +58,8 @@ type System struct {
 	Host   string `toml:"host"`
 	Port   int    `toml:"port"`
 	Domain string `toml:"domain"`
-	Mode   string `toml:"mode"` // 模式 strict严格https默认
+	Mode   string `toml:"mode"`  // 模式 strict严格https默认
+	Token  string `toml:"token"` // 验证token
 }
 
 type Client struct {
@@ -110,4 +115,18 @@ func init() {
 
 func Global() *App {
 	return _global
+}
+
+func Token() string {
+	randomBytes := make([]byte, 32)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return ""
+	}
+	hash := sha256.New()
+	hash.Write(randomBytes)
+	tokenH := hash.Sum(nil)
+	tk := hex.EncodeToString(tokenH)
+	log.Infof("init connect token: %s", tk)
+	return tk
 }

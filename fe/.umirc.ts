@@ -11,9 +11,9 @@ export default defineConfig({
   favicons: ["favicon.ico"],
   initialState: {},
   proxy: {
-    '/api': {
-      'target': 'http://127.0.0.1:8080'
-    }
+    // '/api': {
+    //   'target': 'http://127.0.0.1:8080'
+    // }
   },
   request: {},
   layout: {
@@ -47,7 +47,8 @@ export default defineConfig({
       component: "Login",
       hideInMenu: true, 
       layout: false,
-    }
+    },
+    { path: '/*', component: '@/pages/404.tsx', layout: false }
   ],
   npmClient: 'npm',
 });
