@@ -2,10 +2,14 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
+	"os"
+	"time"
 
 	"gihub.com/vlean/oneway/config"
 	"gihub.com/vlean/oneway/tool/oauth"
+	"github.com/BurntSushi/toml"
 	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
 	"github.com/samber/lo"
@@ -22,6 +26,13 @@ func SystemConfigUpdate(ctx *gin.Context) (data any, err error) {
 	if err != nil {
 		return
 	}
+	fs, err := os.Create(fmt.Sprintf("config-%s.toml", time.Now().Format("200102150405")))
+	if err != nil {
+		return
+	}
+	defer fs.Close()
+
+	err = toml.NewEncoder(fs).Encode(req)
 	log.Tracef("获取config req: %v", req)
 	data = &req
 	return

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import styles from './Setting.less';
 import { systemConfig, systemConfigUpdate } from '@/services/controller';
-import { PageContainer, ProForm, ProFormInstance, ProFormRadio, ProFormSwitch, ProFormText } from '@ant-design/pro-components';
+import { PageContainer, ProForm, ProFormFieldSet, ProFormInstance, ProFormList, ProFormRadio, ProFormSwitch, ProFormText } from '@ant-design/pro-components';
 import { Button, Divider, message } from 'antd';
 
 export default function Page() {
@@ -45,6 +45,7 @@ export default function Page() {
         layout='horizontal'
         request={async () => {
           const rep = await systemConfig();
+          rep.data.Auth.Emails = rep.data.Auth.Email.map((v: any) => {email: v})
           return rep.data;
         }}
         formRef={formRef}
@@ -69,9 +70,10 @@ export default function Page() {
         }}
       >
         <ProForm.Group title="系统设置">
-           <ProFormText name={["System","Host"]} label="Host" initialValue={"0.0.0.0"} />
-           <ProFormText name={["System","Port"]} label="Port" initialValue={"443"} />
-           <ProFormText name={["System", "Domain"]} label="域名"/>
+           <ProFormText name={["System","Host"]} label="Host"  width="md" />
+           <ProFormText name={["System","Port"]} label="Port"  />
+           <ProFormText name={["System", "Domain"]} label="域名" width="md" />
+           <ProFormText name={["System", "Token"]} label="Token" width="md"/>
            <ProFormRadio.Group
               name={["System", "Mode"]} label="模式" radioType="button" initialValue={'strict'}
               options={[
@@ -85,10 +87,10 @@ export default function Page() {
                 }
               ]}
             />
+            
         </ProForm.Group>
         <ProForm.Group title="服务端">
-          <ProFormText name={["Server", "Domain"]} label="域名"/>
-          <ProFormRadio.Group
+            <ProFormRadio.Group
                 name={["Server", "ForceHttps"]} label="强制HTTPS" radioType='button' initialValue={true}
                 options={[
                   {
@@ -101,9 +103,10 @@ export default function Page() {
                   }
                 ]}
               />
+          <ProFormText name={["Server", "Domain"]} label="域名" width="md"/>
         </ProForm.Group>
         <ProForm.Group title="Let'sEncrypt">
-          <ProFormRadio.Group
+        <ProFormRadio.Group
                 name={["Cloudflare", "Mode"]} label="DNS" radioType='button' initialValue={'cloudflare'}
                 options={[
                   {
@@ -116,10 +119,12 @@ export default function Page() {
                   }
                 ]}
               />
-          <ProFormText  name={["Cloudflare", "Email"]} label="邮箱"  />
-          <ProFormText  name={["Cloudflare", "ApiKey"]} label="ApiKey"  />
-          <ProFormText  name={["Cloudflare", "DnsApiToken"]} label="DnsApiToken"  />
-          <ProFormText  name={["Cloudflare", "ZoneApiToken"]} label="ZoneApiToken"  />
+          <br/>
+          <ProFormText  name={["Cloudflare", "Email"]} label="邮箱" width="md" />
+          <ProFormText  name={["Cloudflare", "ApiKey"]} label="ApiKey" width="md" />
+          <ProFormText  name={["Cloudflare", "DnsApiToken"]} label="DnsApiToken" width="md"  />
+          <ProFormText  name={["Cloudflare", "ZoneApiToken"]} label="ZoneApiToken"  width="md" />
+
         </ProForm.Group>
         <ProForm.Group title="OAuth">
         <ProFormRadio.Group

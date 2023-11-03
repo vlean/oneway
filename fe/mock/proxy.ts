@@ -80,6 +80,10 @@ export default {
     code: 0,
     msg: "succ"
   },
+  'POST /api/system/config/update': {
+    code: 0,
+    msg: 'succ'
+  },
   'GET /api/system/config': {
     "code": 0,
     "data": {
@@ -103,7 +107,7 @@ export default {
               "Mode": "gitee",
               "Expire": 24,
               "Email": [
-                  "xxx@qq.com"
+                  "xxx@qq.com", "demo@qq.com"
               ],
               "Token": "xxx",
               "ClientId": "xxx"
