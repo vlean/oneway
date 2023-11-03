@@ -2,13 +2,13 @@ package netx
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"gihub.com/vlean/oneway/gox"
 	"github.com/gorilla/websocket"
-	"go.uber.org/atomic"
 	"golang.org/x/net/context"
 )
 

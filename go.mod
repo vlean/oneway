@@ -7,13 +7,13 @@ require (
 	github.com/foomo/simplecert v1.8.7
 	github.com/foomo/tlsconfig v0.0.0-20180418120404-b67861b076c9
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-acme/lego/v4 v4.3.1
 	github.com/go-resty/resty/v2 v2.10.0
 	github.com/go-session/session/v3 v3.2.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/samber/lo v1.38.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
-	go.uber.org/atomic v1.9.0
 	golang.org/x/net v0.17.0
 	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.5
@@ -54,7 +54,6 @@ require (
 	github.com/form3tech-oss/jwt-go v3.2.2+incompatible // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/go-acme/lego/v4 v4.3.1 // indirect
 	github.com/go-errors/errors v1.1.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -122,6 +121,7 @@ require (
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/vultr/govultr/v2 v2.4.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/ratelimit v0.1.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.14.0 // indirect

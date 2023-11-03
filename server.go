@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"embed"
 	"errors"
 	"fmt"
@@ -27,7 +28,6 @@ import (
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 func init() {
@@ -186,7 +186,7 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		key := r.Header.Get("name")
+		key := r.URL.Query().Get("name")
 		if key == "" {
 			key = "default"
 		}

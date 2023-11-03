@@ -21,6 +21,8 @@ func init() {
 			c := &client{
 				App: config.Global(),
 			}
+			c.buildConn()
+			c.buildConn()
 			c.Run()
 			return nil
 		},
@@ -45,10 +47,10 @@ func (c *client) Run() {
 }
 
 func (c *client) buildConn() (conn *netx.Conn, err error) {
-	ws, _, err := websocket.DefaultDialer.Dial(
-		lo.If(c.StrictMode(), "wss://").Else("ws://")+
-			c.Client.Remote+"/connect?name="+c.Client.Name,
-		nil)
+	remote := lo.If(c.StrictMode(), "wss://").Else("ws://") +
+		c.Client.Remote + "/connect?name=" + c.Client.Name
+	log.Tracef("remote_connect %v", remote)
+	ws, _, err := websocket.DefaultDialer.Dial(remote, nil)
 	if err != nil {
 		return
 	}
