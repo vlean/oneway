@@ -21,6 +21,12 @@ func init() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c := &client{
 				App: config.Global(),
+				cli: &http.Client{
+					Transport: http.DefaultTransport,
+					CheckRedirect: func(req *http.Request, via []*http.Request) error {
+						return http.ErrUseLastResponse
+					},
+				},
 			}
 			c.buildConn()
 			c.buildConn()
@@ -33,6 +39,7 @@ func init() {
 
 type client struct {
 	*config.App
+	cli *http.Client
 }
 
 func (c *client) Run() {
@@ -141,7 +148,7 @@ func (c *client) transport(cont []byte, conn *netx.Conn) (err error) {
 		return
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.cli.Do(req)
 	if err != nil {
 		log.Errorf("query body err: %v", err)
 		return

@@ -353,6 +353,10 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	if nr.Header.Get("Content-Encoding") != "" {
 		nr.Header.Set("Content-Encoding", "gzip")
 	}
+	if ck, err := nr.Cookie("go_session_id"); err == nil && ck != nil {
+		ss := nr.Header.Get("go_session_id")
+		nr.Header.Set("go_session_id", strings.ReplaceAll(ss, ck.Value, "session_id"))
+	}
 
 	// proxy
 	pool := s.pg.Get(group)
