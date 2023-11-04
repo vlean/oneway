@@ -263,7 +263,7 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 			h := w.Header()
 			h.Add("Cache-Control", "public, max-age=86400")
 			// 增加cache
-			w.Write(cont)
+			_, _ = w.Write(cont)
 		}
 		return
 	}
@@ -388,10 +388,11 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		nr.URL.EscapedPath())
 	h := w.Header()
 	resp.Header.Del("Connection")
+	log.Tracef("tracer header %v", resp.Header)
 	s.copyHeader(h, resp.Header)
 
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	_, _ = io.Copy(w, resp.Body)
 	return
 }
 
