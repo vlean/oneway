@@ -228,12 +228,12 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	stat.HttpIncr(stat.Request)
 	// 测试
-	log.Tracef("debug header start ")
-	r.Write(os.Stdout)
-	log.Tracef("debug header end")
 
 	// 鉴权
 	if s.auth(w, r) != nil {
+		log.Tracef("auth fail stdout")
+		_ = r.Write(os.Stdout)
+
 		stat.HttpIncr(stat.AuthFail)
 		r.URL.Host = r.Host
 		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
