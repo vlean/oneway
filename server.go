@@ -227,6 +227,10 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 		r.URL.Scheme = "https"
 	}
 	stat.HttpIncr(stat.Request)
+	// 测试
+	log.Tracef("debug header start ")
+	r.Write(os.Stdout)
+	log.Tracef("debug header end")
 
 	// 鉴权
 	if s.auth(w, r) != nil {
