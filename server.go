@@ -230,10 +230,8 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 	// 测试
 
 	// 鉴权
-	if s.auth(w, r) != nil {
-		log.Tracef("auth fail stdout")
-		_ = r.Write(os.Stdout)
-
+	if err := s.auth(w, r); err != nil {
+		log.Tracef("auth fail %v", err)
 		stat.HttpIncr(stat.AuthFail)
 		r.URL.Host = r.Host
 		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
@@ -292,7 +290,17 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
-	store, err := session.Start(context.Background(), w, r)
+	ck, err := r.Cookie("go_session_id")
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			log.Tracef("auth fail sid:%v err:%v", ck.Value, err)
+		}
+	}()
+	store, err := session.Start(r.Context(), w, r)
 	if err != nil {
 		return err
 	}
