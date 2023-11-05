@@ -232,6 +232,7 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 	// 鉴权
 	if err := s.auth(w, r); err != nil {
 		log.Errorf("auth fail %v header: %v", err, r.Header.Get("Cookie"))
+		r.Write(os.Stdout)
 		stat.HttpIncr(stat.AuthFail)
 		r.URL.Host = r.Host
 		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
