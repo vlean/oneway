@@ -304,13 +304,13 @@ func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
 }
 
 func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn) (err error) {
-	group, nr, ok := s.rewrite(r)
+	fw, nr, ok := s.rewrite(r)
 	if !ok {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	pool := s.pg.Get(group)
+	pool := s.pg.Get(fw.Client)
 	if pool == nil {
 		return
 	}
@@ -345,7 +345,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 }
 
 func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
-	group, nr, ok := s.rewrite(r)
+	fw, nr, ok := s.rewrite(r)
 	if !ok {
 		w.WriteHeader(http.StatusForbidden)
 		return
@@ -359,7 +359,7 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	// proxy
-	pool := s.pg.Get(group)
+	pool := s.pg.Get(fw.Client)
 	if pool == nil {
 		return
 	}
@@ -393,8 +393,15 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	h := w.Header()
 	resp.Header.Del("Connection")
 	log.Tracef("tracer header %v", resp.Header)
-	s.copyHeader(h, resp.Header)
-
+	for k, v := range resp.Header {
+		for _, v1 := range v {
+			if strings.Contains(v1, fw.To) {
+				v1 = strings.ReplaceAll(v1, "http://"+fw.To, "https://"+fw.From)
+				v1 = strings.ReplaceAll(v1, fw.To, fw.From)
+			}
+			h.Add(k, v1)
+		}
+	}
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, resp.Body)
 	return
@@ -409,9 +416,9 @@ func (s *server) copyHeader(dest, src http.Header) {
 	}
 }
 
-func (s *server) rewrite(r *http.Request) (group string, nr *http.Request, ok bool) {
+func (s *server) rewrite(r *http.Request) (p *model.Forward, nr *http.Request, ok bool) {
 	// rewrite
-	p := model.NewForwardDao().Proxy(r.Host)
+	p = model.NewForwardDao().Proxy(r.Host)
 	if ok = p != nil; !ok {
 		return
 	}
@@ -420,7 +427,6 @@ func (s *server) rewrite(r *http.Request) (group string, nr *http.Request, ok bo
 	nr.Header.Add("proxy_schema", p.Schema)
 	nr.Host = p.To
 	nr.URL.Host = p.To
-	group = p.Client
 
 	return
 }
