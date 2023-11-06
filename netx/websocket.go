@@ -23,9 +23,6 @@ const (
 )
 
 var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
-
 	Upgrader = &websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -76,17 +73,22 @@ func (w *Ws) Write() {
 		ticker.Stop()
 		w.conn.Close()
 	}()
-	for {
-		select {
-		case <-ticker.C:
-			w.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := w.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
-			if err := w.conn.WriteJSON(map[string]string{"hi": "json"}); err != nil {
-				return
-			}
+	for range ticker.C {
+		w.conn.SetWriteDeadline(time.Now().Add(writeWait))
+		if err := w.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			return
+		}
+		if err := w.conn.WriteJSON(map[string]string{"hi": "json"}); err != nil {
+			return
 		}
 	}
 }
 
+func WrapH(f func(http.ResponseWriter, *http.Request) error) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := f(w, r)
+		if err != nil {
+			log.WithError(err).WithContext(r.Context()).Error("handel error")
+		}
+	}
+}

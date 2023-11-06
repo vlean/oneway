@@ -3,26 +3,31 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"embed"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
+	"gihub.com/vlean/oneway/api"
 	"gihub.com/vlean/oneway/config"
 	"gihub.com/vlean/oneway/gox"
 	"gihub.com/vlean/oneway/model"
 	"gihub.com/vlean/oneway/netx"
 	"gihub.com/vlean/oneway/netx/httpx"
 	"gihub.com/vlean/oneway/tool/oauth"
+	"gihub.com/vlean/oneway/tool/stat"
 	"github.com/foomo/simplecert"
 	"github.com/foomo/tlsconfig"
+	"github.com/gin-gonic/gin"
 	"github.com/go-session/session/v3"
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 func init() {
@@ -31,10 +36,15 @@ func init() {
 		Aliases: []string{"server"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := &server{
-				App:   config.Global(),
-				pg:    netx.NewGroupPool(),
-				oauth: oauth.NewClient(config.Global()),
+				App:    config.Global(),
+				pg:     netx.NewGroupPool(),
+				oauth:  oauth.NewClient(config.Global()),
+				engine: gin.Default(),
 			}
+			if s.App.System.Token == "" {
+				s.App.System.Token = config.Token()
+			}
+			netx.SetGloablGP(s.pg)
 			return s.Run()
 		},
 	})
@@ -45,14 +55,20 @@ type server struct {
 	server *http.Server
 	pg     *netx.GroupPool
 	oauth  oauth.OAuth
+	engine *gin.Engine
 }
 
+//go:embed bin/dist
+var feResource embed.FS
+
 func (s *server) Run() (err error) {
+	model.InitDB()
+
 	// session
 	session.InitManager(
 		session.SetDomain(s.RootDomain()),
 		session.SetEnableSetCookie(true),
-		session.SetExpired(3600*24),
+		session.SetExpired(3600*s.App.Auth.Expire),
 		session.SetSecure(s.App.StrictMode()),
 		session.SetStore(model.NewSessionManager()),
 	)
@@ -93,30 +109,42 @@ func (s *server) Run() (err error) {
 func (s *server) redirectHttps() {
 	mx := &http.ServeMux{}
 	mx.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Scheme == "http" {
-			r.URL.Scheme = "https"
-		} else if r.URL.Scheme == "ws" {
-			r.URL.Scheme = "wss"
+		// 拦截
+		if !s.canProxy(w, r) {
+			return
 		}
+		r.URL.Host = r.Host
+		log.Tracef("https force redirect from %v", r.URL.String())
+		switch r.URL.Scheme {
+		case "ws":
+			r.URL.Scheme = "wss"
+		case "":
+			if r.Header.Get("Connection") == "Upgrade" &&
+				r.Header.Get("Upgrade") == "websocket" {
+				r.URL.Scheme = "wss"
+			} else {
+				r.URL.Scheme = "https"
+			}
+		default:
+			r.URL.Scheme = "https"
+		}
+		log.Tracef("https force redirect to %v", r.URL.String())
 		http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 	})
 	log.Info("http force http server listen :80")
 	_ = http.ListenAndServe(":80", mx)
 }
 
-func (s *server) router() *http.ServeMux {
+func (s *server) router() http.Handler {
 	mx := &http.ServeMux{}
-	mx.HandleFunc("/", s.handle)
-	mx.HandleFunc(s.App.System.Domain+"/connect", s.connect)
-	mx.HandleFunc(s.App.System.Domain+"/auth/callback", s.callback)
-	mx.HandleFunc("/mock", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	mx.HandleFunc("/", netx.WrapH(s.handle))
+	mx.HandleFunc(s.App.System.Domain+"/connect", netx.WrapH(s.connect))
+	mx.HandleFunc(s.App.System.Domain+"/auth/callback", netx.WrapH(s.callback))
+	api.Register(s.engine)
 	return mx
 }
 
-func (s *server) callback(w http.ResponseWriter, r *http.Request) {
+func (s *server) callback(w http.ResponseWriter, r *http.Request) (err error) {
 	r.URL.Host = r.Host
 	if r.TLS != nil && r.URL.Scheme == "" {
 		r.URL.Scheme = "https"
@@ -147,41 +175,102 @@ func (s *server) callback(w http.ResponseWriter, r *http.Request) {
 	if lo.Contains(s.App.Auth.Email, res.Email) {
 		redirect := q.Get("redirect_uri")
 		http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
-		return
+		return fmt.Errorf("current eamil: %v", res.Email)
 	}
 	w.WriteHeader(http.StatusForbidden)
+	return
 }
 
-func (s *server) connect(w http.ResponseWriter, r *http.Request) {
+func (s *server) connect(w http.ResponseWriter, r *http.Request) (err error) {
 	// 判断是否升级为wss
 	if r.Header.Get("Connection") == "Upgrade" &&
 		r.Header.Get("Upgrade") == "websocket" {
 		conn, err := netx.Upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			return
+			return err
 		}
 
-		key := r.Header.Get("name")
+		if r.URL.Query().Get("token") != s.App.System.Token {
+			log.Warnf("err connection %v", r.URL.String())
+			w.WriteHeader(http.StatusForbidden)
+			return errors.New("http forbidden")
+		}
+
+		key := r.URL.Query().Get("name")
 		if key == "" {
 			key = "default"
 		}
 		pool := s.pg.Get(key)
 		pool.Add(conn)
 		log.Tracef("connect success group:%s addr:%s size:%v", key, conn.RemoteAddr(), pool.Len())
-		return
+		return nil
 	}
+	return nil
 }
 
-func (s *server) handle(w http.ResponseWriter, r *http.Request) {
+func (s *server) canProxy(w http.ResponseWriter, r *http.Request) bool {
+	ok := model.NewForwardDao().Proxy(r.Host) != nil
+	if !ok {
+		ok = r.Host == s.App.System.Domain
+	}
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+	}
+	return ok
+}
+
+func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
+	// 拦截
+	if !s.canProxy(w, r) {
+		return
+	}
 	r.URL.Host = r.Host
 	if r.TLS != nil && r.URL.Scheme == "" {
 		r.URL.Scheme = "https"
 	}
+	stat.HttpIncr(stat.Request)
+	// 测试
 
-	if s.auth(w, r) != nil {
+	// 鉴权
+	if err = s.auth(w, r); err != nil {
+		log.Errorf("auth fail %v header: %v", err, r.Header)
+		r.Write(os.Stdout)
+		stat.HttpIncr(stat.AuthFail)
 		r.URL.Host = r.Host
 		http.Redirect(w, r, s.oauth.AuthURL(r.URL), http.StatusTemporaryRedirect)
 		return
+	}
+
+	// 拦截
+	if r.Host == s.System.Domain {
+		path := r.URL.Path
+		if strings.HasPrefix(path, "/api/") {
+			s.engine.ServeHTTP(w, r)
+			return
+		}
+
+		switch path {
+		case "/connect":
+			s.connect(w, r)
+		case "/auth/callback":
+			s.callback(w, r)
+		default:
+			if !(strings.HasSuffix(path, ".js") ||
+				strings.HasSuffix(path, ".css") ||
+				strings.HasSuffix(path, ".ico")) {
+				path = "/index.html"
+			}
+			cont, err := feResource.ReadFile("bin/dist" + path)
+			if err != nil {
+				log.Warnf("read file err: %v path: %v", err, path)
+				return err
+			}
+			h := w.Header()
+			h.Add("Cache-Control", "public, max-age=86400")
+			// 增加cache
+			_, _ = w.Write(cont)
+		}
+		return fmt.Errorf("not found handle")
 	}
 
 	// 判断是否升级为wss
@@ -189,22 +278,33 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 		r.Header.Get("Upgrade") == "websocket" {
 		conn, err := netx.Upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			return
+			return err
 		}
-		_ = s.wsproxy(w, r, netx.NewConn(conn))
-		return
+		err = s.wsproxy(w, r, netx.NewConn(conn))
+		return err
 	}
 
 	// 转发请求
-	if err := s.proxy(w, r); err != nil {
+	if err = s.proxy(w, r); err != nil {
 		log.Errorf("proxy error %v", err)
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+	return
 }
 
 func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
-	store, err := session.Start(context.Background(), w, r)
+	ck, err := r.Cookie("go_session_id")
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		if err != nil {
+			log.Tracef("auth fail sid:%v err:%v", ck.Value, err)
+		}
+	}()
+	store, err := session.Start(r.Context(), w, r)
 	if err != nil {
 		return err
 	}
@@ -220,13 +320,20 @@ func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
 }
 
 func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn) (err error) {
-	group, nr, ok := s.rewrite(r)
+	fw, nr, ok := s.rewrite(r)
 	if !ok {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+	// 替换header
+	hr := nr.Header
+	for k := range hr {
+		if strings.HasPrefix(k, "Sec-") {
+			nr.Header.Del(k)
+		}
+	}
 
-	pool := s.pg.Get(group)
+	pool := s.pg.Get(fw.Client)
 	if pool == nil {
 		return
 	}
@@ -247,6 +354,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 	// read&write
 	gox.Run(func() {
 		defer pool.Put(pc)
+		defer conn.Close()
 		for {
 			select {
 			case orgMsg := <-conn.ReadC():
@@ -260,7 +368,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 }
 
 func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
-	group, nr, ok := s.rewrite(r)
+	fw, nr, ok := s.rewrite(r)
 	if !ok {
 		w.WriteHeader(http.StatusForbidden)
 		return
@@ -268,9 +376,13 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	if nr.Header.Get("Content-Encoding") != "" {
 		nr.Header.Set("Content-Encoding", "gzip")
 	}
+	//if ck, err := nr.Cookie("go_session_id"); err == nil && ck != nil {
+	//	ss := nr.Header.Get("go_session_id")
+	//	nr.Header.Set("go_session_id", strings.ReplaceAll(ss, ck.Value, "session_id"))
+	//}
 
 	// proxy
-	pool := s.pg.Get(group)
+	pool := s.pg.Get(fw.Client)
 	if pool == nil {
 		return
 	}
@@ -303,10 +415,18 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 		nr.URL.EscapedPath())
 	h := w.Header()
 	resp.Header.Del("Connection")
-	s.copyHeader(h, resp.Header)
-
+	log.Tracef("tracer header %v", resp.Header)
+	for k, v := range resp.Header {
+		for _, v1 := range v {
+			if strings.Contains(v1, fw.To) {
+				v1 = strings.ReplaceAll(v1, "http://"+fw.To, "https://"+fw.From)
+				v1 = strings.ReplaceAll(v1, fw.To, fw.From)
+			}
+			h.Add(k, v1)
+		}
+	}
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	_, _ = io.Copy(w, resp.Body)
 	return
 }
 
@@ -319,9 +439,9 @@ func (s *server) copyHeader(dest, src http.Header) {
 	}
 }
 
-func (s *server) rewrite(r *http.Request) (group string, nr *http.Request, ok bool) {
+func (s *server) rewrite(r *http.Request) (p *model.Forward, nr *http.Request, ok bool) {
 	// rewrite
-	p := model.NewForwardDao().Proxy(r.Host)
+	p = model.NewForwardDao().Proxy(r.Host)
 	if ok = p != nil; !ok {
 		return
 	}
@@ -330,7 +450,6 @@ func (s *server) rewrite(r *http.Request) (group string, nr *http.Request, ok bo
 	nr.Header.Add("proxy_schema", p.Schema)
 	nr.Host = p.To
 	nr.URL.Host = p.To
-	group = p.Client
 
 	return
 }

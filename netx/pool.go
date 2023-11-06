@@ -2,13 +2,13 @@ package netx
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"gihub.com/vlean/oneway/gox"
 	"github.com/gorilla/websocket"
-	"go.uber.org/atomic"
 	"golang.org/x/net/context"
 )
 
@@ -113,4 +113,34 @@ func (g *GroupPool) Add(group string, pool *Pool) {
 	g.Lock()
 	defer g.Unlock()
 	g.pool[group] = pool
+}
+
+func (g *GroupPool) Stat() []Stat {
+	g.Lock()
+	defer g.Unlock()
+	ret := make([]Stat, 0)
+	for name, pool := range g.pool {
+		ret = append(ret, Stat{
+			Name: name,
+			Size: pool.size,
+			Use:  pool.Len(),
+		})
+	}
+	return ret
+}
+
+type Stat struct {
+	Name string `json:"name"`
+	Size int    `json:"size"`
+	Use  int    `json:"use"`
+}
+
+var _gloabl *GroupPool
+
+func SetGloablGP(c *GroupPool) {
+	_gloabl = c
+}
+
+func GlobalGP() *GroupPool {
+	return _gloabl
 }

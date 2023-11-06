@@ -1,0 +1,24 @@
+[system]
+host="0.0.0.0"
+port=443
+domain="example.com" # 域名
+
+[server]
+domain="example.com" # 域名
+
+[client]
+remote="example.com" 
+
+[dns]
+mode="cloudflare" # dns
+email="demo@qq.com" # 邮箱
+api_key="demo" # apikey
+dns_api_token="demo" # dns apikey
+zone_api_token="demo" # zone apikey
+
+
+[auth]
+mode="github" # github/gitee
+email=[]
+token="demo" # token
+client_id="demo" # client id

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"net/http"
 
 	"gihub.com/vlean/oneway/config"
@@ -15,20 +16,30 @@ import (
 )
 
 func init() {
-	root.AddCommand(&cobra.Command{
+	cmd := &cobra.Command{
 		Use: "client",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			c := &client{
 				App: config.Global(),
+				cli: &http.Client{
+					Transport: http.DefaultTransport,
+					CheckRedirect: func(req *http.Request, via []*http.Request) error {
+						return http.ErrUseLastResponse
+					},
+				},
 			}
+			c.buildConn()
+			c.buildConn()
 			c.Run()
 			return nil
 		},
-	})
+	}
+	root.AddCommand(cmd)
 }
 
 type client struct {
 	*config.App
+	cli *http.Client
 }
 
 func (c *client) Run() {
@@ -45,10 +56,10 @@ func (c *client) Run() {
 }
 
 func (c *client) buildConn() (conn *netx.Conn, err error) {
-	ws, _, err := websocket.DefaultDialer.Dial(
-		lo.If(c.StrictMode(), "wss://").Else("ws://")+
-			c.Client.Remote+"/connect?name="+c.Client.Name,
-		nil)
+	schema := lo.If(c.StrictMode(), "wss").Else("ws")
+	remote := fmt.Sprintf("%s://%s/connect?name=%s&token=%s", schema, c.Client.Remote, c.Client.Name, c.System.Token)
+	log.Tracef("remote_connect %v", remote)
+	ws, _, err := websocket.DefaultDialer.Dial(remote, nil)
 	if err != nil {
 		return
 	}
@@ -82,12 +93,23 @@ func (c *client) handleMsg(msg *netx.Msg, conn *netx.Conn) {
 	}
 }
 
+var (
+	headers = []string{"Cookie", "User-Agent"}
+)
+
 func (c *client) wsproxy(req *http.Request, conn *netx.Conn) (err error) {
 	req.URL.Scheme = "ws"
 	if req.Header.Get("proxy_schema") == "https" {
 		req.URL.Scheme = "wss"
 	}
-	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), req.Header)
+	h := http.Header{}
+	for _, k := range headers {
+		if v := req.Header.Get(k); v != "" {
+			h.Add(k, v)
+		}
+	}
+	// 白名单header
+	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), h)
 	if err != nil {
 		return
 	}
@@ -126,7 +148,7 @@ func (c *client) transport(cont []byte, conn *netx.Conn) (err error) {
 		return
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.cli.Do(req)
 	if err != nil {
 		log.Errorf("query body err: %v", err)
 		return

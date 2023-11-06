@@ -1,15 +1,16 @@
 package gox
 
 import (
+	"context"
+
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
 
 func RunE(f func(ctx context.Context) error) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				// todo
+				log.Errorf("gorountine panic: %v", r)
 			}
 		}()
 		if err := f(context.Background()); err != nil {
@@ -24,4 +25,3 @@ func Run(f func()) {
 		return nil
 	})
 }
-

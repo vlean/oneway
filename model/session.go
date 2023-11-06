@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-acme/lego/v4/log"
 	"github.com/go-session/session/v3"
 	"gorm.io/gorm"
 )
 
 type Session struct {
-	gorm.Model
+	Model
 	SessionId string    `gorm:"column:sid"`
 	Value     string    `gorm:"column:value;size:2048;"`
 	ExpiredAt time.Time `gorm:"column:expired_at"`
@@ -118,6 +119,9 @@ func (s *SessionManager) Close() error {
 		val.SessionId = k
 		return val.Save() == nil
 	})
+	// 删除过期
+	err := Q(context.Background()).Where("expired_at<?", time.Now()).Delete(&Session{}).Error
+	log.Infof("remove expired cookie %v", err)
 	return nil
 }
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"os"
 
 	"gihub.com/vlean/oneway/config"
@@ -14,10 +13,16 @@ import (
 var (
 	root = &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			return errors.New("test")
+			return nil
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
+			if cfgFile == "" {
+				return
+			}
 			cont, err := os.ReadFile(cfgFile)
+			if err == os.ErrNotExist {
+				return nil
+			}
 			if err != nil {
 				return
 			}
@@ -36,4 +41,3 @@ func main() {
 		log.Infof("run error: %v", err)
 	}
 }
-
