@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"gihub.com/vlean/oneway/api"
 	"gihub.com/vlean/oneway/config"
@@ -352,30 +353,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 		Type: websocket.TextMessage,
 		Cont: bf.Bytes(),
 	})
-	toMsg := proxyConn.Read()
-	bff := &bytes.Buffer{}
-	bff.Write(toMsg.Cont)
-	resp, err := httpx.ReadResponse(bufio.NewReader(bff))
-	if err != nil {
-		log.Errorf("parser response err: %v", err)
-		return
-	}
-	log.Tracef("redirect length %v from %v to %v ", resp.Body.Len(),
-		nr.URL.Host,
-		nr.URL.EscapedPath())
-	h := w.Header()
-	log.Tracef("tracer header %v", resp.Header)
-	for k, v := range resp.Header {
-		for _, v1 := range v {
-			if strings.Contains(v1, fw.To) {
-				v1 = strings.ReplaceAll(v1, "http://"+fw.To, "https://"+fw.From)
-				v1 = strings.ReplaceAll(v1, fw.To, fw.From)
-			}
-			h.Add(k, v1)
-		}
-	}
-	w.WriteHeader(resp.StatusCode)
-	_, _ = io.Copy(w, resp.Body)
+	time.Sleep(time.Second / 10)
 
 	// read&write
 	gox.Run(func() {
@@ -408,10 +386,6 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	if nr.Header.Get("Content-Encoding") != "" {
 		nr.Header.Set("Content-Encoding", "gzip")
 	}
-	//if ck, err := nr.Cookie("go_session_id"); err == nil && ck != nil {
-	//	ss := nr.Header.Get("go_session_id")
-	//	nr.Header.Set("go_session_id", strings.ReplaceAll(ss, ck.Value, "session_id"))
-	//}
 
 	// proxy
 	pool := s.pg.Get(fw.Client)

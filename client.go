@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"os"
+	"time"
 
 	"gihub.com/vlean/oneway/config"
 	"gihub.com/vlean/oneway/gox"
@@ -50,7 +52,7 @@ func (c *client) Run() {
 
 		<-conn.Context().Done()
 		return nil
-	}, gox.RetryAlways())
+	}, gox.RetryAlways(), gox.RetrySleep(time.Second, time.Second*10))
 }
 
 func (c *client) buildConn() (conn *netx.Conn, err error) {
@@ -99,27 +101,19 @@ func (c *client) wsproxy(req *http.Request, proxyConn *netx.Conn) (err error) {
 		return
 	}
 	defer resp.Body.Close()
-	// ws proxy
-	bf := &bytes.Buffer{}
-	resp.TransferEncoding = nil
-	if err = resp.Write(bf); err != nil {
-		return
-	}
-	log.Tracef("ws proxy url:%v resp: %v", req.URL.String(), bf.Len())
-	proxyConn.Write(&netx.Msg{
-		Type: websocket.TextMessage,
-		Cont: bf.Bytes(),
-	})
+	resp.Write(os.Stdout)
 
 	cliConn := netx.NewConn(ws)
 	gox.Run(func() {
 		defer cliConn.Close()
+		defer proxyConn.Close()
 		for v := range cliConn.ReadC() {
 			proxyConn.Write(v)
 		}
 	})
 	gox.Run(func() {
 		defer cliConn.Close()
+		defer proxyConn.Close()
 		for v := range proxyConn.ReadC() {
 			cliConn.Write(v)
 		}
