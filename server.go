@@ -360,9 +360,15 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 		}()
 		for {
 			select {
-			case cliMsg := <-cliConn.ReadC():
+			case cliMsg, ok := <-cliConn.ReadC():
+				if !ok {
+					return
+				}
 				proxyConn.Write(cliMsg)
-			case proxyMsg := <-proxyConn.ReadC():
+			case proxyMsg, ok  := <-proxyConn.ReadC():
+				if !ok {
+					return 
+				}
 				cliConn.Write(proxyMsg)
 			}
 		}
