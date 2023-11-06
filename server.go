@@ -277,7 +277,14 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 	// 判断是否升级为wss
 	if r.Header.Get("Connection") == "Upgrade" &&
 		r.Header.Get("Upgrade") == "websocket" {
-		conn, err := netx.Upgrader.Upgrade(w, r, nil)
+		rh := http.Header{}
+		headers := []string{"Sec-Websocket-Protocol"}
+		for _, v := range headers {
+			if r.Header.Get(v) != "" {
+				rh.Add(v, r.Header.Get(v))
+			}
+		}
+		conn, err := netx.Upgrader.Upgrade(w, r, rh)
 		if err != nil {
 			return err
 		}
