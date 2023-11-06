@@ -354,23 +354,20 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 	// read&write
 	gox.Run(func() {
 		defer func() {
-			log.Tracef("ws close: %v", cliConn.String())
-			pool.Put(proxyConn)
+			proxyConn.Close()
 			cliConn.Close()
 		}()
-		for {
-			select {
-			case cliMsg, ok := <-cliConn.ReadC():
-				if !ok {
-					return
-				}
-				proxyConn.Write(cliMsg)
-			case proxyMsg, ok  := <-proxyConn.ReadC():
-				if !ok {
-					return 
-				}
-				cliConn.Write(proxyMsg)
-			}
+		for cliMsg := range cliConn.ReadC() {
+			proxyConn.Write(cliMsg)
+		}
+	})
+	gox.Run(func() {
+		defer func() {
+			proxyConn.Close()
+			cliConn.Close()
+		}()
+		for proxyMsg := range proxyConn.ReadC() {
+			cliConn.Write(proxyMsg)
 		}
 	})
 	return nil
