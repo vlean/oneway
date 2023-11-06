@@ -281,8 +281,10 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 		if err != nil {
 			return err
 		}
-		err = s.wsproxy(w, r, netx.NewConn(conn))
-		return err
+		gox.RunE(func(context.Context) error {
+			return s.wsproxy(w, r, netx.NewConn(conn))
+		})
+		return nil
 	}
 
 	// 转发请求
