@@ -353,6 +353,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 		Type: websocket.TextMessage,
 		Cont: bf.Bytes(),
 	})
+	log.WithContext(r.Context()).Infof("ws proxy proxy: %s cli: %s", proxyConn, cliConn)
 	time.Sleep(time.Second / 10)
 
 	// read&write
