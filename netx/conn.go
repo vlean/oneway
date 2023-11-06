@@ -87,7 +87,7 @@ func (c *Conn) readMsg() {
 			log.WithError(err).Debugf("read message fail client: %s type: %v", c, msg.Type)
 			break
 		}
-		msg.TracerRead()
+		msg.TracerRead(c)
 		c.read <- msg
 	}
 }
@@ -101,11 +101,11 @@ func (c *Conn) writeMsg() {
 	for {
 		select {
 		case msg, ok := <-c.write:
-			msg.TracerWrite()
+			msg.TracerWrite(c)
 			c.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				c.ws.WriteMessage(websocket.CloseMessage, []byte{})
-				log.Errorf("write msg fail, msg not ok")
+				log.Errorf("write msg fail, msg not ok client: %s", c)
 				return
 			}
 

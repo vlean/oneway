@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"gihub.com/vlean/oneway/config"
@@ -95,23 +94,15 @@ func (c *client) handleMsg(msg *netx.Msg, conn *netx.Conn) {
 
 func (c *client) wsproxy(req *http.Request, proxyConn *netx.Conn) (err error) {
 	// 白名单header
-	ws, resp, err := websocket.DefaultDialer.Dial(req.URL.String(), req.Header)
+	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), req.Header)
 	if err != nil {
 		log.WithError(err).Infof("build connection")
 		return
 	}
-	defer resp.Body.Close()
 	cliConn := netx.NewConn(ws)
 
 	log.WithContext(req.Context()).Infof("ws proxy proxy: %s cli: %s", proxyConn, cliConn)
-	resp.Write(os.Stdout)
-	gox.Run(func() {
-		defer cliConn.Close()
-		defer proxyConn.Close()
-		for v := range cliConn.ReadC() {
-			proxyConn.Write(v)
-		}
-	})
+
 	gox.Run(func() {
 		defer cliConn.Close()
 		defer proxyConn.Close()
@@ -119,6 +110,12 @@ func (c *client) wsproxy(req *http.Request, proxyConn *netx.Conn) (err error) {
 			cliConn.Write(v)
 		}
 	})
+
+	defer cliConn.Close()
+	defer proxyConn.Close()
+	for v := range cliConn.ReadC() {
+		proxyConn.Write(v)
+	}
 	return nil
 }
 
