@@ -100,12 +100,12 @@ func (c *Conn) writeMsg() {
 
 			w, err := c.ws.NextWriter(msg.Type)
 			if err != nil {
-				log.WithError(err).Errorf("write msg fail build writer")
+				log.WithError(err).Errorf("write msg fail build writer client: %v", c.String())
 				return
 			}
 			w.Write(msg.Cont)
 			if err = w.Close(); err != nil {
-				log.WithError(err).Errorf("write msg fail close err")
+				log.WithError(err).Errorf("write msg fail close err client: %v", c.String())
 				return
 			}
 		case <-ticker.C:
