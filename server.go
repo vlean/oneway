@@ -326,9 +326,9 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 		return
 	}
 	// 替换header
-	hr := nr.Header
-	for k := range hr {
-		if strings.HasPrefix(k, "Sec-") {
+	blockHeader := []string{"Sec-WebSocket-Extensions", "Sec-WebSocket-Key", "Upgrade", "Connection", "Sec-WebSocket-Version", "Sec-WebSocket-Extensions"}
+	for k := range nr.Header.Clone() {
+		if lo.Contains(blockHeader, k) {
 			nr.Header.Del(k)
 		}
 	}
