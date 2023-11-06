@@ -83,3 +83,12 @@ func (w *Ws) Write() {
 		}
 	}
 }
+
+func WrapH(f func(http.ResponseWriter, *http.Request) error) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := f(w, r)
+		if err != nil {
+			log.WithError(err).WithContext(r.Context()).Error("handel error")
+		}
+	}
+}

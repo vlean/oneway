@@ -8,12 +8,11 @@ export default defineConfig({
   },
   access: {},
   model: {},
-  favicons: ["favicon.ico"],
   initialState: {},
   proxy: {
-    // '/api': {
-    //   'target': 'http://127.0.0.1:8080'
-    // }
+    '/api': {
+      'target': 'http://127.0.0.1:8080'
+    }
   },
   request: {},
   layout: {

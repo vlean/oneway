@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-COPY bin/app /app
+
 
 RUN set -x && apt-get update \
     && apt-get install --no-install-recommends ca-certificates -y \
@@ -9,6 +9,8 @@ RUN set -x && apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/app:$PATH"
+
+COPY bin/app /app
 
 EXPOSE 80 443
 

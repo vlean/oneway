@@ -31,7 +31,7 @@ dbuild:
 	rm -rf bin/app && mkdir -p bin/app 
 	cp bin/oneway bin/app/
 	cp example.toml bin/app/config.toml
-	docker build -t oneway .
+	docker build -t vlean/oneway .
 
 alldb: allbuild dbuild
 

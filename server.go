@@ -137,14 +137,14 @@ func (s *server) redirectHttps() {
 
 func (s *server) router() http.Handler {
 	mx := &http.ServeMux{}
-	mx.HandleFunc("/", s.handle)
-	mx.HandleFunc(s.App.System.Domain+"/connect", s.connect)
-	mx.HandleFunc(s.App.System.Domain+"/auth/callback", s.callback)
+	mx.HandleFunc("/", netx.WrapH(s.handle))
+	mx.HandleFunc(s.App.System.Domain+"/connect", netx.WrapH(s.connect))
+	mx.HandleFunc(s.App.System.Domain+"/auth/callback", netx.WrapH(s.callback))
 	api.Register(s.engine)
 	return mx
 }
 
-func (s *server) callback(w http.ResponseWriter, r *http.Request) {
+func (s *server) callback(w http.ResponseWriter, r *http.Request) (err error) {
 	r.URL.Host = r.Host
 	if r.TLS != nil && r.URL.Scheme == "" {
 		r.URL.Scheme = "https"
@@ -175,24 +175,25 @@ func (s *server) callback(w http.ResponseWriter, r *http.Request) {
 	if lo.Contains(s.App.Auth.Email, res.Email) {
 		redirect := q.Get("redirect_uri")
 		http.Redirect(w, r, redirect, http.StatusTemporaryRedirect)
-		return
+		return fmt.Errorf("current eamil: %v", res.Email)
 	}
 	w.WriteHeader(http.StatusForbidden)
+	return
 }
 
-func (s *server) connect(w http.ResponseWriter, r *http.Request) {
+func (s *server) connect(w http.ResponseWriter, r *http.Request) (err error) {
 	// 判断是否升级为wss
 	if r.Header.Get("Connection") == "Upgrade" &&
 		r.Header.Get("Upgrade") == "websocket" {
 		conn, err := netx.Upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			return
+			return err
 		}
 
 		if r.URL.Query().Get("token") != s.App.System.Token {
 			log.Warnf("err connection %v", r.URL.String())
 			w.WriteHeader(http.StatusForbidden)
-			return
+			return errors.New("http forbidden")
 		}
 
 		key := r.URL.Query().Get("name")
@@ -202,8 +203,9 @@ func (s *server) connect(w http.ResponseWriter, r *http.Request) {
 		pool := s.pg.Get(key)
 		pool.Add(conn)
 		log.Tracef("connect success group:%s addr:%s size:%v", key, conn.RemoteAddr(), pool.Len())
-		return
+		return nil
 	}
+	return nil
 }
 
 func (s *server) canProxy(w http.ResponseWriter, r *http.Request) bool {
@@ -217,7 +219,7 @@ func (s *server) canProxy(w http.ResponseWriter, r *http.Request) bool {
 	return ok
 }
 
-func (s *server) handle(w http.ResponseWriter, r *http.Request) {
+func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 	// 拦截
 	if !s.canProxy(w, r) {
 		return
@@ -230,8 +232,8 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 	// 测试
 
 	// 鉴权
-	if err := s.auth(w, r); err != nil {
-		log.Errorf("auth fail %v header: %v", err, r.Header.Get("Cookie"))
+	if err = s.auth(w, r); err != nil {
+		log.Errorf("auth fail %v header: %v", err, r.Header)
 		r.Write(os.Stdout)
 		stat.HttpIncr(stat.AuthFail)
 		r.URL.Host = r.Host
@@ -261,14 +263,14 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 			cont, err := feResource.ReadFile("bin/dist" + path)
 			if err != nil {
 				log.Warnf("read file err: %v path: %v", err, path)
-				return
+				return err
 			}
 			h := w.Header()
 			h.Add("Cache-Control", "public, max-age=86400")
 			// 增加cache
 			_, _ = w.Write(cont)
 		}
-		return
+		return fmt.Errorf("not found handle")
 	}
 
 	// 判断是否升级为wss
@@ -276,18 +278,19 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) {
 		r.Header.Get("Upgrade") == "websocket" {
 		conn, err := netx.Upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			return
+			return err
 		}
-		_ = s.wsproxy(w, r, netx.NewConn(conn))
-		return
+		err = s.wsproxy(w, r, netx.NewConn(conn))
+		return err
 	}
 
 	// 转发请求
-	if err := s.proxy(w, r); err != nil {
+	if err = s.proxy(w, r); err != nil {
 		log.Errorf("proxy error %v", err)
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
+	return
 }
 
 func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
@@ -321,6 +324,13 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 	if !ok {
 		w.WriteHeader(http.StatusForbidden)
 		return
+	}
+	// 替换header
+	hr := nr.Header
+	for k := range hr {
+		if strings.HasPrefix(k, "Sec-") {
+			nr.Header.Del(k)
+		}
 	}
 
 	pool := s.pg.Get(fw.Client)
