@@ -9,7 +9,7 @@ webuild:
 build:
 	mkdir -p bin
 	cp config.toml bin/config.toml
-	GOOS=linux GARCH=amd64 go build -tags "nethttpomithttp2" -o bin/oneway *.go
+	GOOS=linux GARCH=amd64 go build -tags "tag" -o bin/oneway *.go
 
 pull:
 	git pull

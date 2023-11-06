@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"time"
 
 	"gihub.com/vlean/oneway/config"
 	"gihub.com/vlean/oneway/gox"
@@ -28,8 +29,6 @@ func init() {
 					},
 				},
 			}
-			c.buildConn()
-			c.buildConn()
 			c.Run()
 			return nil
 		},
@@ -52,7 +51,7 @@ func (c *client) Run() {
 
 		<-conn.Context().Done()
 		return nil
-	}, gox.RetryAlways())
+	}, gox.RetryAlways(), gox.RetrySleep(time.Second, time.Second*10))
 }
 
 func (c *client) buildConn() (conn *netx.Conn, err error) {
@@ -93,38 +92,30 @@ func (c *client) handleMsg(msg *netx.Msg, conn *netx.Conn) {
 	}
 }
 
-var (
-	headers = []string{"Cookie", "User-Agent"}
-)
-
-func (c *client) wsproxy(req *http.Request, conn *netx.Conn) (err error) {
-	req.URL.Scheme = "ws"
-	if req.Header.Get("proxy_schema") == "https" {
-		req.URL.Scheme = "wss"
-	}
-	h := http.Header{}
-	for _, k := range headers {
-		if v := req.Header.Get(k); v != "" {
-			h.Add(k, v)
-		}
-	}
+func (c *client) wsproxy(req *http.Request, proxyConn *netx.Conn) (err error) {
 	// 白名单header
-	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), h)
+	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), req.Header)
 	if err != nil {
+		log.WithError(err).Infof("build connection")
 		return
 	}
-	to := netx.NewConn(ws)
+	cliConn := netx.NewConn(ws)
+
+	log.WithContext(req.Context()).Infof("ws proxy proxy: %s cli: %s", proxyConn, cliConn)
+
 	gox.Run(func() {
-		defer to.Close()
-		for {
-			select {
-			case toMsg := <-to.ReadC():
-				conn.Write(toMsg)
-			case fMsg := <-conn.ReadC():
-				to.Write(fMsg)
-			}
+		defer cliConn.Close()
+		defer proxyConn.Close()
+		for v := range proxyConn.ReadC() {
+			cliConn.Write(v)
 		}
 	})
+
+	defer cliConn.Close()
+	defer proxyConn.Close()
+	for v := range cliConn.ReadC() {
+		proxyConn.Write(v)
+	}
 	return nil
 }
 
@@ -142,9 +133,8 @@ func (c *client) transport(cont []byte, conn *netx.Conn) (err error) {
 	}
 	req.RequestURI = ""
 	// 判断是否升级为wss
-	if req.Header.Get("Connection") == "Upgrade" &&
-		req.Header.Get("Upgrade") == "websocket" {
-		_ = c.wsproxy(req, conn)
+	if lo.Contains([]string{"ws", "wss"}, req.Header.Get("proxy_schema")) {
+		err = c.wsproxy(req, conn)
 		return
 	}
 

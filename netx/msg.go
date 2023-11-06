@@ -25,9 +25,9 @@ func (m *Msg) System() *PoolCtl {
 	return pc
 }
 
-func (m *Msg) TracerWrite() {
-	log.Tracef("tracer msg write type:%d cont: %v", m.Type, len(m.Cont))
+func (m *Msg) TracerWrite(c *Conn) {
+	log.Tracef("tracer %s write type:%d cont: %v", c, m.Type, string(m.Cont))
 }
-func (m *Msg) TracerRead() {
-	log.Tracef("tracer msg read type:%d cont: %v", m.Type, len(m.Cont))
+func (m *Msg) TracerRead(c *Conn) {
+	log.Tracef("tracer %s read type:%d cont: %v", c, m.Type, string(m.Cont))
 }

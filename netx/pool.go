@@ -123,7 +123,7 @@ func (g *GroupPool) Stat() []Stat {
 		ret = append(ret, Stat{
 			Name: name,
 			Size: pool.size,
-			Use:  pool.Len(),
+			Use:  pool.q.GetLen(),
 		})
 	}
 	return ret

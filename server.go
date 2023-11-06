@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"gihub.com/vlean/oneway/api"
 	"gihub.com/vlean/oneway/config"
@@ -276,12 +277,22 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 	// 判断是否升级为wss
 	if r.Header.Get("Connection") == "Upgrade" &&
 		r.Header.Get("Upgrade") == "websocket" {
-		conn, err := netx.Upgrader.Upgrade(w, r, nil)
+		rh := http.Header{}
+		headers := []string{"Sec-Websocket-Protocol"}
+		for _, v := range headers {
+			if r.Header.Get(v) != "" {
+				rh.Add(v, r.Header.Get(v))
+			}
+		}
+		conn, err := netx.Upgrader.Upgrade(w, r, rh)
 		if err != nil {
 			return err
 		}
-		err = s.wsproxy(w, r, netx.NewConn(conn))
-		return err
+		gox.RunE(func(context.Context) error {
+			time.Sleep(time.Second * 3)
+			return s.wsproxy(w, r, netx.NewConn(conn))
+		})
+		return nil
 	}
 
 	// 转发请求
@@ -319,26 +330,28 @@ func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
 	return errors.New("not authed")
 }
 
-func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn) (err error) {
+func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.Conn) (err error) {
 	fw, nr, ok := s.rewrite(r)
 	if !ok {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 	// 替换header
-	hr := nr.Header
-	for k := range hr {
-		if strings.HasPrefix(k, "Sec-") {
-			nr.Header.Del(k)
+	header := []string{"proxy_schema", "Cookie", "Accept-Encoding", "Accept-Language", "Host", "Cache-Control", "Pragma", "Origin", "Sec-Websocket-Protocol", "User-Agent"}
+	hh := http.Header{}
+	for _, k := range header {
+		if nr.Header.Get(k) != "" {
+			hh.Add(k, nr.Header.Get(k))
 		}
 	}
+	nr.Header = hh
 
 	pool := s.pg.Get(fw.Client)
 	if pool == nil {
 		return
 	}
-	pc := pool.Get()
-	if pc == nil {
+	proxyConn := pool.Get()
+	if proxyConn == nil {
 		return
 	}
 	// build conn
@@ -346,22 +359,30 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 	if err = nr.Write(bf); err != nil {
 		return
 	}
-	pc.Write(&netx.Msg{
+	proxyConn.Write(&netx.Msg{
 		Type: websocket.TextMessage,
 		Cont: bf.Bytes(),
 	})
+	log.WithContext(r.Context()).Infof("ws proxy proxy: %s cli: %s", proxyConn, cliConn)
+	time.Sleep(time.Second / 10)
 
 	// read&write
 	gox.Run(func() {
-		defer pool.Put(pc)
-		defer conn.Close()
-		for {
-			select {
-			case orgMsg := <-conn.ReadC():
-				pc.Write(orgMsg)
-			case toMsg := <-pc.ReadC():
-				conn.Write(toMsg)
-			}
+		defer func() {
+			proxyConn.Close()
+			cliConn.Close()
+		}()
+		for cliMsg := range cliConn.ReadC() {
+			proxyConn.Write(cliMsg)
+		}
+	})
+	gox.Run(func() {
+		defer func() {
+			proxyConn.Close()
+			cliConn.Close()
+		}()
+		for proxyMsg := range proxyConn.ReadC() {
+			cliConn.Write(proxyMsg)
 		}
 	})
 	return nil
@@ -376,10 +397,6 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	if nr.Header.Get("Content-Encoding") != "" {
 		nr.Header.Set("Content-Encoding", "gzip")
 	}
-	//if ck, err := nr.Cookie("go_session_id"); err == nil && ck != nil {
-	//	ss := nr.Header.Get("go_session_id")
-	//	nr.Header.Set("go_session_id", strings.ReplaceAll(ss, ck.Value, "session_id"))
-	//}
 
 	// proxy
 	pool := s.pg.Get(fw.Client)
@@ -447,7 +464,16 @@ func (s *server) rewrite(r *http.Request) (p *model.Forward, nr *http.Request, o
 	}
 	nr = r.Clone(context.Background())
 	nr.RequestURI = ""
-	nr.Header.Add("proxy_schema", p.Schema)
+	if nr.Header.Get("Connection") == "Upgrade" &&
+		nr.Header.Get("Upgrade") == "websocket" {
+		if p.Schema == "http" {
+			nr.Header.Set("proxy_schema", "ws")
+		} else {
+			nr.Header.Set("proxy_schema", "wss")
+		}
+	} else {
+		nr.Header.Add("proxy_schema", p.Schema)
+	}
 	nr.Host = p.To
 	nr.URL.Host = p.To
 

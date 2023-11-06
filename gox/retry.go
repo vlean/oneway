@@ -54,12 +54,16 @@ func Retry(f func() error, opt ...RetryOption) {
 	sleep := r.sleep
 	rt := 0
 	for {
+		start := time.Now()
 		err := f()
 		if err == nil && r.onlyErr {
 			return
 		}
 
 		log.Warnf("exec error: %v, retry: %d, sleep: %s", err, rt, sleep.String())
+		if time.Since(start).Seconds() > sleep.Seconds()*2 {
+			rt = 0
+		}
 
 		// 是否停止重试
 		if r.max != -1 && rt > r.max {
@@ -75,4 +79,3 @@ func Retry(f func() error, opt ...RetryOption) {
 		}
 	}
 }
-
