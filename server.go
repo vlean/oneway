@@ -326,7 +326,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 		return
 	}
 	// 替换header
-	header := []string{"Cookie", "Accept-Encoding", "Accept-Language", "Host", "Cache-Control", "Pragma", "Origin", "Sec-Websocket-Protocol", "User-Agent"}
+	header := []string{"proxy_schema", "Cookie", "Accept-Encoding", "Accept-Language", "Host", "Cache-Control", "Pragma", "Origin", "Sec-Websocket-Protocol", "User-Agent"}
 	hh := http.Header{}
 	for _, k := range header {
 		if nr.Header.Get(k) != "" {
