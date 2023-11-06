@@ -282,6 +282,7 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 			return err
 		}
 		gox.RunE(func(context.Context) error {
+			time.Sleep(time.Second * 3)
 			return s.wsproxy(w, r, netx.NewConn(conn))
 		})
 		return nil
