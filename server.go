@@ -326,12 +326,14 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 		return
 	}
 	// 替换header
-	blockHeader := []string{"Sec-WebSocket-Extensions", "Sec-WebSocket-Key", "Upgrade", "Connection", "Sec-WebSocket-Version", "Sec-WebSocket-Extensions"}
-	for k := range nr.Header.Clone() {
-		if lo.Contains(blockHeader, k) {
-			nr.Header.Del(k)
+	header := []string{"Cookie", "Accept-Encoding", "Accept-Language", "Host", "Cache-Control", "Pragma", "Origin", "Sec-Websocket-Protocol", "User-Agent"}
+	hh := http.Header{}
+	for _, k := range header {
+		if nr.Header.Get(k) != "" {
+			hh.Add(k, nr.Header.Get(k))
 		}
 	}
+	nr.Header = hh
 
 	pool := s.pg.Get(fw.Client)
 	if pool == nil {
