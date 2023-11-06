@@ -73,7 +73,7 @@ func (c *Conn) readMsg() {
 		msg := &Msg{}
 		msg.Type, msg.Cont, err = c.ws.ReadMessage()
 		if err != nil {
-			log.Printf("read message error: %v client: %v type: %v, cont: %v", err, c.String(), msg.Type, string(msg.Cont))
+			log.WithError(err).Debugf("read message fail client: %v type: %v", c.String(), msg.Type)
 			break
 		}
 		msg.TracerRead()
@@ -94,15 +94,18 @@ func (c *Conn) writeMsg() {
 			c.ws.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				c.ws.WriteMessage(websocket.CloseMessage, []byte{})
+				log.Errorf("write msg fail, msg not ok")
 				return
 			}
 
 			w, err := c.ws.NextWriter(msg.Type)
 			if err != nil {
+				log.WithError(err).Errorf("write msg fail build writer")
 				return
 			}
 			w.Write(msg.Cont)
 			if err = w.Close(); err != nil {
+				log.WithError(err).Errorf("write msg fail close err")
 				return
 			}
 		case <-ticker.C:
