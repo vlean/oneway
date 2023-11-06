@@ -28,8 +28,6 @@ func init() {
 					},
 				},
 			}
-			c.buildConn()
-			c.buildConn()
 			c.Run()
 			return nil
 		},
