@@ -319,7 +319,7 @@ func (s *server) auth(w http.ResponseWriter, r *http.Request) (err error) {
 	return errors.New("not authed")
 }
 
-func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn) (err error) {
+func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.Conn) (err error) {
 	fw, nr, ok := s.rewrite(r)
 	if !ok {
 		w.WriteHeader(http.StatusForbidden)
@@ -337,8 +337,8 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 	if pool == nil {
 		return
 	}
-	pc := pool.Get()
-	if pc == nil {
+	proxyConn := pool.Get()
+	if proxyConn == nil {
 		return
 	}
 	// build conn
@@ -346,21 +346,24 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, conn *netx.Conn
 	if err = nr.Write(bf); err != nil {
 		return
 	}
-	pc.Write(&netx.Msg{
+	proxyConn.Write(&netx.Msg{
 		Type: websocket.TextMessage,
 		Cont: bf.Bytes(),
 	})
 
 	// read&write
 	gox.Run(func() {
-		defer pool.Put(pc)
-		defer conn.Close()
+		defer func() {
+			log.Tracef("ws close: %v", cliConn.String())
+			pool.Put(proxyConn)
+			cliConn.Close()
+		}()
 		for {
 			select {
-			case orgMsg := <-conn.ReadC():
-				pc.Write(orgMsg)
-			case toMsg := <-pc.ReadC():
-				conn.Write(toMsg)
+			case cliMsg := <-cliConn.ReadC():
+				proxyConn.Write(cliMsg)
+			case proxyMsg := <-proxyConn.ReadC():
+				cliConn.Write(proxyMsg)
 			}
 		}
 	})

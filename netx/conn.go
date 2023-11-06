@@ -73,7 +73,7 @@ func (c *Conn) readMsg() {
 		msg := &Msg{}
 		msg.Type, msg.Cont, err = c.ws.ReadMessage()
 		if err != nil {
-			log.Printf("read message error: %v", err)
+			log.Printf("read message error: %v client: %v", err, c.String())
 			break
 		}
 		msg.TracerRead()
