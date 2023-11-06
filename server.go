@@ -453,7 +453,16 @@ func (s *server) rewrite(r *http.Request) (p *model.Forward, nr *http.Request, o
 	}
 	nr = r.Clone(context.Background())
 	nr.RequestURI = ""
-	nr.Header.Add("proxy_schema", p.Schema)
+	if nr.Header.Get("Connection") == "Upgrade" &&
+		nr.Header.Get("Upgrade") == "websocket" {
+		if p.Schema == "http" {
+			nr.Header.Set("proxy_schema", "ws")
+		} else {
+			nr.Header.Set("proxy_schema", "wss")
+		}
+	} else {
+		nr.Header.Add("proxy_schema", p.Schema)
+	}
 	nr.Host = p.To
 	nr.URL.Host = p.To
 

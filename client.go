@@ -93,36 +93,37 @@ func (c *client) handleMsg(msg *netx.Msg, conn *netx.Conn) {
 	}
 }
 
-var (
-	headers = []string{"Cookie", "User-Agent"}
-)
-
-func (c *client) wsproxy(req *http.Request, conn *netx.Conn) (err error) {
-	req.URL.Scheme = "ws"
-	if req.Header.Get("proxy_schema") == "https" {
-		req.URL.Scheme = "wss"
-	}
-	h := http.Header{}
-	for _, k := range headers {
-		if v := req.Header.Get(k); v != "" {
-			h.Add(k, v)
-		}
-	}
+func (c *client) wsproxy(req *http.Request, proxyConn *netx.Conn) (err error) {
 	// 白名单header
-	ws, _, err := websocket.DefaultDialer.Dial(req.URL.String(), h)
+	ws, resp, err := websocket.DefaultDialer.Dial(req.URL.String(), req.Header)
+	log.Infof("build connection err: %v ws: %v", err, ws)
 	if err != nil {
 		return
 	}
-	to := netx.NewConn(ws)
+	defer resp.Body.Close()
+	// ws proxy
+	bf := &bytes.Buffer{}
+	resp.TransferEncoding = nil
+	if err = resp.Write(bf); err != nil {
+		return
+	}
+	log.Tracef("ws proxy url:%v resp: %v", req.URL.String(), bf.Len())
+	proxyConn.Write(&netx.Msg{
+		Type: websocket.TextMessage,
+		Cont: bf.Bytes(),
+	})
+
+	cliConn := netx.NewConn(ws)
 	gox.Run(func() {
-		defer to.Close()
-		for {
-			select {
-			case toMsg := <-to.ReadC():
-				conn.Write(toMsg)
-			case fMsg := <-conn.ReadC():
-				to.Write(fMsg)
-			}
+		defer cliConn.Close()
+		for v := range cliConn.ReadC() {
+			proxyConn.Write(v)
+		}
+	})
+	gox.Run(func() {
+		defer cliConn.Close()
+		for v := range proxyConn.ReadC() {
+			cliConn.Write(v)
 		}
 	})
 	return nil
@@ -142,9 +143,8 @@ func (c *client) transport(cont []byte, conn *netx.Conn) (err error) {
 	}
 	req.RequestURI = ""
 	// 判断是否升级为wss
-	if req.Header.Get("Connection") == "Upgrade" &&
-		req.Header.Get("Upgrade") == "websocket" {
-		_ = c.wsproxy(req, conn)
+	if lo.Contains([]string{"ws", "wss"}, req.Header.Get("proxy_schema")) {
+		err = c.wsproxy(req, conn)
 		return
 	}
 
