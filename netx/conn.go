@@ -2,14 +2,23 @@ package netx
 
 import (
 	"context"
+	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 )
 
+var id int64
+
+func incr() int64 {
+	return atomic.AddInt64(&id, 1)
+}
+
 type Conn struct {
+	ID    int64
 	ctx   context.Context
 	ws    *websocket.Conn // websocket连接
 	Close func()          // 关闭
@@ -23,6 +32,7 @@ type Conn struct {
 func NewConn(conn *websocket.Conn) *Conn {
 	ctx, cancel := context.WithCancel(context.Background())
 	c := &Conn{
+		ID:    incr(),
 		ctx:   ctx,
 		ws:    conn,
 		read:  make(chan *Msg),
@@ -31,6 +41,7 @@ func NewConn(conn *websocket.Conn) *Conn {
 	}
 	c.Close = func() {
 		c.once.Do(func() {
+			log.Tracef("close conn %s", c)
 			c.closed = true
 			cancel()
 			c.ws.Close()
@@ -46,7 +57,7 @@ func (c *Conn) Closed() bool {
 }
 
 func (c *Conn) String() string {
-	return c.ws.RemoteAddr().String()
+	return fmt.Sprintf("conn id: %d, remote: %v", c.ID, c.ws.RemoteAddr().String())
 }
 
 func (c *Conn) Write(msg *Msg) {
@@ -73,7 +84,7 @@ func (c *Conn) readMsg() {
 		msg := &Msg{}
 		msg.Type, msg.Cont, err = c.ws.ReadMessage()
 		if err != nil {
-			log.WithError(err).Debugf("read message fail client: %v type: %v", c.String(), msg.Type)
+			log.WithError(err).Debugf("read message fail client: %s type: %v", c, msg.Type)
 			break
 		}
 		msg.TracerRead()
@@ -100,12 +111,12 @@ func (c *Conn) writeMsg() {
 
 			w, err := c.ws.NextWriter(msg.Type)
 			if err != nil {
-				log.WithError(err).Errorf("write msg fail build writer client: %v", c.String())
+				log.WithError(err).Errorf("write msg fail build writer client: %v", c)
 				return
 			}
 			w.Write(msg.Cont)
 			if err = w.Close(); err != nil {
-				log.WithError(err).Errorf("write msg fail close err client: %v", c.String())
+				log.WithError(err).Errorf("write msg fail close err client: %v", c)
 				return
 			}
 		case <-ticker.C:

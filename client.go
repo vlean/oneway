@@ -96,14 +96,15 @@ func (c *client) handleMsg(msg *netx.Msg, conn *netx.Conn) {
 func (c *client) wsproxy(req *http.Request, proxyConn *netx.Conn) (err error) {
 	// 白名单header
 	ws, resp, err := websocket.DefaultDialer.Dial(req.URL.String(), req.Header)
-	log.Infof("build connection err: %v ws: %v", err, ws)
 	if err != nil {
+		log.WithError(err).Infof("build connection")
 		return
 	}
 	defer resp.Body.Close()
-	resp.Write(os.Stdout)
-
 	cliConn := netx.NewConn(ws)
+
+	log.WithContext(req.Context()).Infof("ws proxy proxy: %s cli: %s", proxyConn, cliConn)
+	resp.Write(os.Stdout)
 	gox.Run(func() {
 		defer cliConn.Close()
 		defer proxyConn.Close()
