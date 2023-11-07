@@ -5,7 +5,7 @@ import (
 )
 
 func Register(r *gin.Engine) {
-	r.GET("/auth", WrapH(Auth))
+	r.GET("/auth", Auth)
 	r.POST("/code", Code)
 	r.POST("/token", Code)
 

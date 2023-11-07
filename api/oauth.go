@@ -26,7 +26,7 @@ type AuthReq struct {
 	Scope        string `form:"scope"`
 }
 
-func Auth(ctx *gin.Context) (data any, err error) {
+func Auth(ctx *gin.Context) {
 	req, err := Bind[AuthReq](ctx)
 	if err != nil {
 		return
@@ -76,6 +76,7 @@ func Auth(ctx *gin.Context) (data any, err error) {
 	}
 
 	toUrl.RawQuery = q.Encode()
+	log.Tracef("redirect to %v", toUrl)
 	ctx.Redirect(http.StatusTemporaryRedirect, toUrl.String())
 	return
 }
