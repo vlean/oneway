@@ -16,16 +16,6 @@ export async function getInitialState(): Promise<{ name: string }> {
 }
 
 export default defineApp({
-  antd: (memo: any) => {
-    memo.theme ??= {};
-    // memo.theme.algorithm = theme.darkAlgorithm; // 配置 antd5 的预设 dark 算法
-  
-    memo.token=  {
-      colorPrimary: '#1890ff',
-    }
-    console.log("antd config", memo)
-    return memo;
-  },
   layout: () => {
     return {
       logo: imgSrc,
