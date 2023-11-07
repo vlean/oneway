@@ -6,7 +6,7 @@ import (
 
 func Register(r *gin.Engine) {
 	r.GET("/auth", Auth)
-	r.POST("/code", Code)
+	r.GET("/user", User)
 	r.POST("/token", Code)
 
 	api := r.Group("/api", OAuthMiddleware)

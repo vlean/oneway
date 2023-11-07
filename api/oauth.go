@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -114,7 +115,12 @@ func Code(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, data)
 }
 
-func User(ctx *gin.Context) (data any, err error) {
-
-	return
+func User(ctx *gin.Context) {
+	body, err := io.ReadAll(ctx.Request.Body)
+	log.Tracef("user request header %v, body %v, err %v", ctx.Request.Header, string(body), err)
+	ctx.JSON(http.StatusOK, map[string]string{
+		"id":    "vlean",
+		"email": "vlean",
+		"name":  "vlean",
+	})
 }
