@@ -10,6 +10,7 @@ import (
 
 	"gihub.com/vlean/oneway/config"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -30,6 +31,7 @@ func Auth(ctx *gin.Context) (data any, err error) {
 	if err != nil {
 		return
 	}
+	log.Tracef("oauth req %v", req)
 	if req.ClientID == "" || !strings.HasPrefix(req.ClientID, "oauth-") || req.RedirectUri == "" {
 		err = authFail
 		return
