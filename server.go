@@ -85,7 +85,8 @@ func (s *server) Run() (err error) {
 		_ = os.Setenv("CLOUDFLARE_DNS_API_TOKEN", dns.DnsApiToken)
 		_ = os.Setenv("CLOUDFLARE_ZONE_API_TOKEN", dns.ZoneApiToken)
 		cfg := simplecert.Default
-		cfg.Domains = append([]string{s.App.System.Domain}, model.NewForwardDao().Domains()...)
+		// cfg.Domains = append([]string{s.App.System.Domain}, model.NewForwardDao().Domains()...)
+		cfg.Domains = []string{"*" + s.App.RootDomain()}
 		cfg.SSLEmail = dns.Email
 		cfg.DNSProvider = "cloudflare"
 		certReload, err2 := simplecert.Init(cfg, nil)
