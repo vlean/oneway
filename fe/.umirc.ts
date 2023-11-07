@@ -1,11 +1,7 @@
 import { defineConfig } from '@umijs/max';
-import { message } from 'antd';
+import { message, theme } from 'antd';
 
 export default defineConfig({
-  antd: {
-    dark: true,
-    compact: true,
-  },
   access: {},
   model: {},
   initialState: {},

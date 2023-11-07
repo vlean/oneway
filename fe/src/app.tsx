@@ -1,34 +1,51 @@
 // 运行时配置
 import React from 'react';
 import { UserOutlined } from '@ant-design/icons';
-import { Avatar, Space, message } from 'antd';
+import { Avatar, Space, message, theme } from 'antd';
 import {useLocation} from 'umi';
 import { RequestConfig } from '@umijs/max';
 import { useModel } from '@umijs/max';
 import { userinfo } from './services/controller';
+import imgSrc from '@/assets/logo.jpg';
+import { RuntimeAntdConfig } from '@umijs/max';
+import { defineApp } from '@umijs/max';
 // 全局初始化数据配置，用于 Layout 用户信息和权限初始化
 // 更多信息见文档：https://umijs.org/docs/api/runtime-config#getinitialstate
 export async function getInitialState(): Promise<{ name: string }> {
   return { name: localStorage.getItem("email") ?? "" };
 }
 
-export const layout = () => {
-  const location  = useLocation();
-  console.log(location);
-  if (location.pathname == "/login") {
-    
-  }
-  return {
-    logo: 'https://img.alicdn.com/tfs/TB1YHEpwUT1gK0jSZFhXXaAtVXa-28-27.svg',
-    menu: {
-      locale: false,
-    },
-    logout: (state: any) => {
-      localStorage.removeItem("email");
-    },
-    
-  };
-};
+export default defineApp({
+  antd: (memo: any) => {
+    memo.theme ??= {};
+    // memo.theme.algorithm = theme.darkAlgorithm; // 配置 antd5 的预设 dark 算法
+  
+    memo.token=  {
+      colorPrimary: '#1890ff',
+    }
+    console.log("antd config", memo)
+    return memo;
+  },
+  layout: () => {
+    return {
+      logo: imgSrc,
+      menu: {
+        locale: false,
+      },
+      logout: (state: any) => {
+        localStorage.removeItem("email");
+      },
+      rightRender: (initialState: any) => {
+        const email = localStorage.getItem("email")
+        return (<p>{email}</p>)
+      },
+      layout: 'mix',
+    };
+  },
+
+  
+});
+
 
 export const request  = () => {
   return {

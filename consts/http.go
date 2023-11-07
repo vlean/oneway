@@ -1,0 +1,5 @@
+package consts
+
+func init() {
+
+}

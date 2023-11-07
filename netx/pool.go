@@ -109,6 +109,22 @@ func (g *GroupPool) Get(key string) *Pool {
 	return g.pool[key]
 }
 
+func (g *GroupPool) GetConn(key string) *Conn {
+	p := g.Get(key)
+	if p == nil {
+		return nil
+	}
+	return p.Get()
+}
+
+func (g *GroupPool) PutConn(k string, c *Conn) {
+	p := g.Get(k)
+	if p == nil {
+		return
+	}
+	p.Put(c)
+}
+
 func (g *GroupPool) Add(group string, pool *Pool) {
 	g.Lock()
 	defer g.Unlock()

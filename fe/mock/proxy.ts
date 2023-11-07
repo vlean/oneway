@@ -12,6 +12,21 @@ export default {
             "to": "github.com",
             "schema": "https",
             "client": "default",
+            "rewrite":{
+                "host_rewrite": true, 
+                "rule":[
+                    {
+                        "path": "all", 
+                        "request": [
+                            {"type": "header", "from": "", "to": ""},
+                            {"type": "header", "action":"remove", "from": "Cookie", "to": ""}
+                        ],
+                        "response": [
+                            {"type": "body", "from": "", "to": ""}
+                        ]
+                    }
+                ]
+            },
             "status": 1
         },
         {
@@ -58,7 +73,9 @@ export default {
             {
                 "name": "codespaces-219220",
                 "size": 1,
-                "use": 1
+                "use": 1,
+                "start_at": "2023-11-03 14:00:42",
+                "run_time": 800
             },
             {
                 "name": "default",

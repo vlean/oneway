@@ -1,8 +1,11 @@
 package netx
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 
+	"gihub.com/vlean/oneway/netx/httpx"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -30,4 +33,16 @@ func (m *Msg) TracerWrite(c *Conn) {
 }
 func (m *Msg) TracerRead(c *Conn) {
 	log.Tracef("tracer %s read type:%d cont: %v", c, m.Type, string(m.Cont))
+}
+
+func (m *Msg) ParseResponse() (*httpx.Response, error) {
+	bff := &bytes.Buffer{}
+	bff.Write(m.Cont)
+	resp, err := httpx.ReadResponse(bufio.NewReader(bff))
+	if err != nil {
+		log.Errorf("parser response err: %v", err)
+	} else {
+		resp.Header.Del("Connection")
+	}
+	return resp, err
 }

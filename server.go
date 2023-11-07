@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"embed"
@@ -18,7 +17,6 @@ import (
 	"gihub.com/vlean/oneway/gox"
 	"gihub.com/vlean/oneway/model"
 	"gihub.com/vlean/oneway/netx"
-	"gihub.com/vlean/oneway/netx/httpx"
 	"gihub.com/vlean/oneway/tool/oauth"
 	"gihub.com/vlean/oneway/tool/stat"
 	"github.com/foomo/simplecert"
@@ -346,11 +344,7 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 	}
 	nr.Header = hh
 
-	pool := s.pg.Get(fw.Client)
-	if pool == nil {
-		return
-	}
-	proxyConn := pool.Get()
+	proxyConn := s.pg.GetConn(fw.Client)
 	if proxyConn == nil {
 		return
 	}
@@ -363,8 +357,6 @@ func (s *server) wsproxy(w http.ResponseWriter, r *http.Request, cliConn *netx.C
 		Type: websocket.TextMessage,
 		Cont: bf.Bytes(),
 	})
-	log.WithContext(r.Context()).Infof("ws proxy proxy: %s cli: %s", proxyConn, cliConn)
-	time.Sleep(time.Second / 10)
 
 	// read&write
 	gox.Run(func() {
@@ -399,40 +391,31 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	}
 
 	// proxy
-	pool := s.pg.Get(fw.Client)
-	if pool == nil {
+	proxyConn := s.pg.GetConn(fw.Client)
+	if proxyConn == nil {
 		return
 	}
-
-	conn := pool.Get()
-	if conn == nil {
-		return
-	}
-	defer pool.Put(conn)
+	defer s.pg.PutConn(fw.Client, proxyConn)
 
 	bf := &bytes.Buffer{}
 	if err = nr.Write(bf); err != nil {
 		return
 	}
-	conn.Write(&netx.Msg{
+	// rewrite header
+	proxyConn.Write(&netx.Msg{
 		Type: websocket.TextMessage,
 		Cont: bf.Bytes(),
 	})
 
-	toMsg := conn.Read()
-	bff := &bytes.Buffer{}
-	bff.Write(toMsg.Cont)
-	resp, err := httpx.ReadResponse(bufio.NewReader(bff))
+	// rewrite response
+	toMsg := proxyConn.Read()
+	resp, err := toMsg.ParseResponse()
 	if err != nil {
-		log.Errorf("parser response err: %v", err)
 		return
 	}
-	log.Tracef("redirect length %v from %v to %v ", resp.Body.Len(),
-		nr.URL.Host,
-		nr.URL.EscapedPath())
+
+	log.Tracef("redirect length %v from %v to %v ", resp.Body.Len(), nr.URL.Host, nr.URL.EscapedPath())
 	h := w.Header()
-	resp.Header.Del("Connection")
-	log.Tracef("tracer header %v", resp.Header)
 	for k, v := range resp.Header {
 		for _, v1 := range v {
 			if strings.Contains(v1, fw.To) {
@@ -445,15 +428,6 @@ func (s *server) proxy(w http.ResponseWriter, r *http.Request) (err error) {
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, resp.Body)
 	return
-}
-
-func (s *server) copyHeader(dest, src http.Header) {
-	//copy header
-	for k, v := range src {
-		for _, v1 := range v {
-			dest.Add(k, v1)
-		}
-	}
 }
 
 func (s *server) rewrite(r *http.Request) (p *model.Forward, nr *http.Request, ok bool) {
