@@ -19,7 +19,7 @@ var (
 )
 
 type AuthReq struct {
-	ClientID     string `form::"client_id"`
+	ClientID     string `form:"client_id"`
 	ResponseType string `form:"response_type"`
 	State        string `form:"state"`
 	RedirectUri  string `form:"redirect_uri"`
