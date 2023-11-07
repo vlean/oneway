@@ -79,7 +79,6 @@ func Auth(ctx *gin.Context) {
 	toUrl.RawQuery = q.Encode()
 	log.Tracef("redirect to %v", toUrl)
 	ctx.Redirect(http.StatusTemporaryRedirect, toUrl.String())
-	return
 }
 
 type CodeReq struct {
@@ -94,11 +93,9 @@ func Code(ctx *gin.Context) {
 	}
 	v, ok := tokenCache.LoadAndDelete(req.Code)
 	if !ok {
-		err = errors.New("invalid token")
 		return
 	}
 	if time.Since(v.(time.Time)) > time.Minute*10 {
-		err = errors.New("invalid token")
 		return
 	}
 

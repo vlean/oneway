@@ -231,7 +231,7 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 	stat.HttpIncr(stat.Request)
 	if r.Host == s.System.Domain {
 		path := r.URL.Path
-		if path == "/user" && path == "/code" {
+		if path == "/user" || path == "/code" {
 			s.engine.ServeHTTP(w, r)
 			return
 		}
