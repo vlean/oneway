@@ -5,6 +5,10 @@ import (
 )
 
 func Register(r *gin.Engine) {
+	r.GET("/auth", WrapH(Auth))
+	r.POST("/code", Code)
+	r.POST("/token", Code)
+
 	api := r.Group("/api", OAuthMiddleware)
 	api.GET("/user", WrapH(Userinfo))
 

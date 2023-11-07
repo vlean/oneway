@@ -229,8 +229,10 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 		r.URL.Scheme = "https"
 	}
 	stat.HttpIncr(stat.Request)
-	// 测试
-
+	if r.Host == s.System.Domain && r.URL.Path == "/token" {
+		s.engine.ServeHTTP(w, r)
+		return
+	}
 	// 鉴权
 	if err = s.auth(w, r); err != nil {
 		log.Errorf("auth fail %v header: %v", err, r.Header)
@@ -254,6 +256,8 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 			s.connect(w, r)
 		case "/auth/callback":
 			s.callback(w, r)
+		case "/auth", "/token", "/code":
+			s.engine.ServeHTTP(w, r)
 		default:
 			if !(strings.HasSuffix(path, ".js") ||
 				strings.HasSuffix(path, ".css") ||
