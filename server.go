@@ -231,7 +231,7 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 	stat.HttpIncr(stat.Request)
 	if r.Host == s.System.Domain {
 		path := r.URL.Path
-		if path == "/user" {
+		if path == "/user" && path == "/code" {
 			s.engine.ServeHTTP(w, r)
 			return
 		}
@@ -259,7 +259,7 @@ func (s *server) handle(w http.ResponseWriter, r *http.Request) (err error) {
 			s.connect(w, r)
 		case "/auth/callback":
 			s.callback(w, r)
-		case "/code", "/auth":
+		case "/auth":
 			s.engine.ServeHTTP(w, r)
 		default:
 			if !(strings.HasSuffix(path, ".js") ||
