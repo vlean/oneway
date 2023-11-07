@@ -18,12 +18,12 @@ var (
 )
 
 func Auth(ctx *gin.Context) (data any, err error) {
-	client := ctx.GetString("client_id")
+	client := ctx.Query("client_id")
 	if client == "" || !strings.HasPrefix(client, "oauth-") {
 		err = authFail
 		return
 	}
-	ri := ctx.GetString("redirect_uri")
+	ri := ctx.Query("redirect_uri")
 	if ri == "" {
 		err = authFail
 		return

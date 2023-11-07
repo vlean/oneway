@@ -57,7 +57,7 @@ func Userinfo(ctx *gin.Context) (data any, err error) {
 }
 
 func OAuthUrl(ctx *gin.Context) (data any, err error) {
-	from := ctx.GetString("from")
+	from := ctx.Query("from")
 	cfg := config.Global()
 	if from != "" {
 		from = cfg.GatewayDomain()
@@ -75,7 +75,7 @@ func OAuthUrl(ctx *gin.Context) (data any, err error) {
 }
 
 func OAuth(ctx *gin.Context) (data any, err error) {
-	code := ctx.GetString("code")
+	code := ctx.Query("code")
 	cfg := config.Global()
 	res, err := oauth.NewClient(cfg).User(code, ctx.Request)
 	if err != nil {
@@ -97,7 +97,7 @@ func OAuth(ctx *gin.Context) (data any, err error) {
 		return
 	}
 	if lo.Contains(cfg.Auth.Email, res.Email) {
-		redirect := ctx.GetString("redirect_uri")
+		redirect := ctx.Query("redirect_uri")
 		data = map[string]any{
 			"redirect": redirect,
 			"auth":     true,
