@@ -57,7 +57,7 @@ type server struct {
 	engine *gin.Engine
 }
 
-//go:embed bin/dist
+//go:embed bin/dist/*
 var feResource embed.FS
 
 func (s *server) Run() (err error) {

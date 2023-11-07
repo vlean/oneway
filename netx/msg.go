@@ -29,10 +29,10 @@ func (m *Msg) System() *PoolCtl {
 }
 
 func (m *Msg) TracerWrite(c *Conn) {
-	log.Tracef("tracer %s write type:%d cont: %v", c, m.Type, string(m.Cont))
+	log.Tracef("tracer %s write type:%d cont: %v", c, m.Type, len(m.Cont))
 }
 func (m *Msg) TracerRead(c *Conn) {
-	log.Tracef("tracer %s read type:%d cont: %v", c, m.Type, string(m.Cont))
+	log.Tracef("tracer %s read type:%d cont: %v", c, m.Type, len(m.Cont))
 }
 
 func (m *Msg) ParseResponse() (*httpx.Response, error) {
